@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { Expense, CreateExpenseRequest, UpdateExpenseRequest, Category } from '../types/expense'
+import { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
 
 const USER_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -23,6 +23,13 @@ export const expenseApi = {
     return response.data
   },
 
+  getByDateRange: async (from: string, to: string): Promise<Expense[]> => {
+    const response = await api.get('/expenses/date', {
+      params: { from, to },
+    })
+    return response.data
+  },
+
   create: async (data: CreateExpenseRequest): Promise<Expense> => {
     const response = await api.post('/expenses', data)
     return response.data
@@ -35,12 +42,5 @@ export const expenseApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/expenses/${id}`)
-  },
-}
-
-export const categoryApi = {
-  getAll: async (): Promise<Category[]> => {
-    const response = await api.get('/categories')
-    return response.data
   },
 }

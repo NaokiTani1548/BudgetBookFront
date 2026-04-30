@@ -12,16 +12,19 @@ import {
   MenuItem,
   Box,
 } from '@mui/material'
-import { Expense, UpdateExpenseRequest, Category } from '../types/expense'
+import type { Expense, UpdateExpenseRequest } from '../../types/expense'
+import type { Category, CreateCategoryRequest } from '../../types/category'
+import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
 
 interface FormProps {
   expense: Expense
   categories: Category[]
   onClose: () => void
   onSubmit: (id: string, data: UpdateExpenseRequest) => void
+  onCreateCategory: (data: CreateCategoryRequest) => Promise<Category>
 }
 
-function ExpenseEditForm({ expense, categories, onClose, onSubmit }: FormProps) {
+function ExpenseEditForm({ expense, categories, onClose, onSubmit, onCreateCategory }: FormProps) {
   const [amount, setAmount] = useState(expense.amount.toString())
   const [expenseDate, setExpenseDate] = useState(expense.expenseDate)
   const [categoryId, setCategoryId] = useState(expense.categoryId)
@@ -63,20 +66,14 @@ function ExpenseEditForm({ expense, categories, onClose, onSubmit }: FormProps) 
             required
             fullWidth
           />
-          <FormControl fullWidth>
-            <InputLabel>カテゴリ</InputLabel>
-            <Select
-              value={categoryId}
-              label="カテゴリ"
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <CategorySelectWithCreate
+            categories={categories}
+            value={categoryId}
+            onChange={setCategoryId}
+            onCreateCategory={onCreateCategory}
+            type="EXPENSE"
+            fullWidth
+          />
           <FormControl fullWidth>
             <InputLabel>支払方法</InputLabel>
             <Select
@@ -118,6 +115,7 @@ interface DialogProps {
   categories: Category[]
   onClose: () => void
   onSubmit: (id: string, data: UpdateExpenseRequest) => void
+  onCreateCategory: (data: CreateCategoryRequest) => Promise<Category>
 }
 
 export default function ExpenseEditDialog({
@@ -126,6 +124,7 @@ export default function ExpenseEditDialog({
   categories,
   onClose,
   onSubmit,
+  onCreateCategory,
 }: DialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -136,6 +135,7 @@ export default function ExpenseEditDialog({
           categories={categories}
           onClose={onClose}
           onSubmit={onSubmit}
+          onCreateCategory={onCreateCategory}
         />
       )}
     </Dialog>

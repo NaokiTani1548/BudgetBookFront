@@ -12,22 +12,25 @@ import {
 } from '@mui/material'
 import { Add } from '@mui/icons-material'
 import dayjs from 'dayjs'
-import { CreateExpenseRequest, Category } from '../types/expense'
+import type { CreateExpenseRequest } from '../../types/expense'
+import type { Category, CreateCategoryRequest } from '../../types/category'
+import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
 
 interface Props {
   categories: Category[]
   onSubmit: (data: CreateExpenseRequest) => void
+  onCreateCategory: (data: CreateCategoryRequest) => Promise<Category>
+  initialDate?: string
 }
 
-export default function ExpenseForm({ categories, onSubmit }: Props) {
+export default function ExpenseForm({ categories, onSubmit, onCreateCategory, initialDate }: Props) {
   const [amount, setAmount] = useState('')
-  const [expenseDate, setExpenseDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [expenseDate, setExpenseDate] = useState(initialDate || dayjs().format('YYYY-MM-DD'))
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [description, setDescription] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [memo, setMemo] = useState('')
 
-  // カテゴリが選択されていない場合、最初のカテゴリをデフォルトにする
   const selectedCategoryId = useMemo(() => {
     if (categoryId) return categoryId
     if (categories.length > 0) return categories[0].id
@@ -47,7 +50,6 @@ export default function ExpenseForm({ categories, onSubmit }: Props) {
       memo: memo || undefined,
     })
 
-    // フォームリセット
     setAmount('')
     setDescription('')
     setMemo('')
@@ -76,21 +78,14 @@ export default function ExpenseForm({ categories, onSubmit }: Props) {
             required
             sx={{ width: 170 }}
           />
-          <FormControl sx={{ width: 150 }}>
-            <InputLabel>カテゴリ</InputLabel>
-            <Select
-              value={selectedCategoryId}
-              label="カテゴリ"
-              onChange={(e) => setCategoryId(e.target.value)}
-              required
-            >
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <CategorySelectWithCreate
+            categories={categories}
+            value={selectedCategoryId}
+            onChange={setCategoryId}
+            onCreateCategory={onCreateCategory}
+            type="EXPENSE"
+            sx={{ width: 180 }}
+          />
           <FormControl sx={{ width: 120 }}>
             <InputLabel>支払方法</InputLabel>
             <Select

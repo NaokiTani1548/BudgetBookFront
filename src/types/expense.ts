@@ -28,12 +28,3 @@ export interface UpdateExpenseRequest {
   paymentMethod: string
   memo?: string
 }
-
-export interface Category {
-  id: string
-  name: string
-  type: string
-  color?: string
-  sortOrder?: number
-  isDefault?: boolean
-}

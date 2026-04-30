@@ -11,15 +11,16 @@ import {
 } from '@mui/material'
 import { Edit, Delete } from '@mui/icons-material'
 import dayjs from 'dayjs'
-import { Expense } from '../types/expense'
+import type { Expense } from '../../types/expense'
 
 interface Props {
   expenses: Expense[]
   onEdit: (expense: Expense) => void
   onDelete: (id: string) => void
+  showDate?: boolean
 }
 
-export default function ExpenseList({ expenses, onEdit, onDelete }: Props) {
+export default function ExpenseList({ expenses, onEdit, onDelete, showDate = true }: Props) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
       style: 'currency',
@@ -32,7 +33,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }: Props) {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>日付</TableCell>
+            {showDate && <TableCell>日付</TableCell>}
             <TableCell>カテゴリ</TableCell>
             <TableCell>説明</TableCell>
             <TableCell align="right">金額</TableCell>
@@ -43,16 +44,18 @@ export default function ExpenseList({ expenses, onEdit, onDelete }: Props) {
         <TableBody>
           {expenses.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} align="center">
+              <TableCell colSpan={showDate ? 6 : 5} align="center">
                 データがありません
               </TableCell>
             </TableRow>
           ) : (
             expenses.map((expense) => (
               <TableRow key={expense.id} hover>
-                <TableCell>
-                  {dayjs(expense.expenseDate).format('YYYY/MM/DD')}
-                </TableCell>
+                {showDate && (
+                  <TableCell>
+                    {dayjs(expense.expenseDate).format('YYYY/MM/DD')}
+                  </TableCell>
+                )}
                 <TableCell>
                   <Chip
                     label={expense.categoryName || '未分類'}
@@ -62,9 +65,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }: Props) {
                   />
                 </TableCell>
                 <TableCell>{expense.description || '-'}</TableCell>
-                <TableCell align="right">
-                  {formatCurrency(expense.amount)}
-                </TableCell>
+                <TableCell align="right">{formatCurrency(expense.amount)}</TableCell>
                 <TableCell>
                   <Chip
                     label={expense.paymentMethod === 'CASH' ? '現金' : 'クレカ'}
@@ -76,11 +77,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }: Props) {
                   <IconButton size="small" onClick={() => onEdit(expense)}>
                     <Edit fontSize="small" />
                   </IconButton>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => onDelete(expense.id)}
-                  >
+                  <IconButton size="small" color="error" onClick={() => onDelete(expense.id)}>
                     <Delete fontSize="small" />
                   </IconButton>
                 </TableCell>
