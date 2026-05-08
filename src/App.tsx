@@ -4,7 +4,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { List, CalendarMonth, Category } from '@mui/icons-material'
 import theme from './theme'
 import ListPage from './pages/ListPage'
-import CalendarPage from './pages/calendarPage'
+import CalendarPage from './pages/CalendarPage'
 import DayDetailPage from './pages/DayDetailPage'
 import CategoryPage from './pages/CategoryPage'
 

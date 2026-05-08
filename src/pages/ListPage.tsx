@@ -1,25 +1,33 @@
 import { useState } from 'react'
-import { Container, Typography } from '@mui/material'
+import { Container, Typography, Tabs, Tab } from '@mui/material'
 import { useExpenses } from '../hooks/useExpenses'
+import { useIncomes } from '../hooks/useIncomes'
 import { useCategories } from '../hooks/useCategories'
 import { useNotification } from '../hooks/useNotification'
 import ExpenseForm from '../components/expense/ExpenseForm'
 import ExpenseList from '../components/expense/ExpenseList'
 import ExpenseEditDialog from '../components/expense/ExpenseEditDialog'
+import IncomeForm from '../components/income/IncomeForm'
+import IncomeList from '../components/income/IncomeList'
+import IncomeEditDialog from '../components/income/IncomeEditDialog'
 import Notification from '../components/common/Notification'
 import Loading from '../components/common/Loading'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
+import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
 
 export default function ListPage() {
-  const { expenses, loading, createExpense, updateExpense, deleteExpense } = useExpenses()
-  const { expenseCategories, createCategory } = useCategories()
+  const { expenses, loading: expenseLoading, createExpense, updateExpense, deleteExpense } = useExpenses()
+  const { incomes, loading: incomeLoading, createIncome, updateIncome, deleteIncome } = useIncomes()
+  const { expenseCategories, incomeCategories, createCategory } = useCategories()
   const { notification, showSuccess, showError, clearNotification } = useNotification()
 
+  const [tabIndex, setTabIndex] = useState(0)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'expense' | 'income'; id: string } | null>(null)
 
-  const handleCreate = async (data: CreateExpenseRequest) => {
+  const handleCreateExpense = async (data: CreateExpenseRequest) => {
     try {
       await createExpense(data)
       showSuccess('支出を追加しました')
@@ -28,7 +36,7 @@ export default function ListPage() {
     }
   }
 
-  const handleUpdate = async (id: string, data: UpdateExpenseRequest) => {
+  const handleUpdateExpense = async (id: string, data: UpdateExpenseRequest) => {
     try {
       await updateExpense(id, data)
       showSuccess('支出を更新しました')
@@ -38,50 +46,107 @@ export default function ListPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return
+  const handleCreateIncome = async (data: CreateIncomeRequest) => {
     try {
-      await deleteExpense(deleteTarget)
-      showSuccess('支出を削除しました')
-      setDeleteTarget(null)
+      await createIncome(data)
+      showSuccess('収入を追加しました')
     } catch {
-      showError('支出の削除に失敗しました')
+      showError('収入の追加に失敗しました')
     }
   }
 
-  if (loading) return <Loading />
+  const handleUpdateIncome = async (id: string, data: UpdateIncomeRequest) => {
+    try {
+      await updateIncome(id, data)
+      showSuccess('収入を更新しました')
+      setEditingIncome(null)
+    } catch {
+      showError('収入の更新に失敗しました')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      if (deleteTarget.type === 'expense') {
+        await deleteExpense(deleteTarget.id)
+      } else {
+        await deleteIncome(deleteTarget.id)
+      }
+      showSuccess(`${deleteTarget.type === 'expense' ? '支出' : '収入'}を削除しました`)
+      setDeleteTarget(null)
+    } catch {
+      showError('削除に失敗しました')
+    }
+  }
+
+  if (expenseLoading || incomeLoading) return <Loading />
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        💰 支出一覧
+        💰 収支一覧
       </Typography>
 
-      <ExpenseForm
-        categories={expenseCategories}
-        onSubmit={handleCreate}
-        onCreateCategory={createCategory}
-      />
+      <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 3 }}>
+        <Tab label={`支出 (${expenses.length})`} />
+        <Tab label={`収入 (${incomes.length})`} />
+      </Tabs>
 
-      <ExpenseList
-        expenses={expenses}
-        onEdit={setEditingExpense}
-        onDelete={setDeleteTarget}
-      />
+      {/* 支出タブ */}
+      {tabIndex === 0 && (
+        <>
+          <ExpenseForm
+            categories={expenseCategories}
+            onSubmit={handleCreateExpense}
+            onCreateCategory={createCategory}
+          />
+          <ExpenseList
+            expenses={expenses}
+            onEdit={setEditingExpense}
+            onDelete={(id) => setDeleteTarget({ type: 'expense', id })}
+          />
+        </>
+      )}
+
+      {/* 収入タブ */}
+      {tabIndex === 1 && (
+        <>
+          <IncomeForm
+            categories={incomeCategories}
+            onSubmit={handleCreateIncome}
+            onCreateCategory={createCategory}
+          />
+          <IncomeList
+            incomes={incomes}
+            onEdit={setEditingIncome}
+            onDelete={(id) => setDeleteTarget({ type: 'income', id })}
+          />
+        </>
+      )}
 
       <ExpenseEditDialog
         open={!!editingExpense}
         expense={editingExpense}
         categories={expenseCategories}
         onClose={() => setEditingExpense(null)}
-        onSubmit={handleUpdate}
+        onSubmit={handleUpdateExpense}
+        onCreateCategory={createCategory}
+      />
+
+      <IncomeEditDialog
+        open={!!editingIncome}
+        income={editingIncome}
+        categories={incomeCategories}
+        onClose={() => setEditingIncome(null)}
+        onSubmit={handleUpdateIncome}
         onCreateCategory={createCategory}
       />
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="支出の削除"
-        message="この支出を削除しますか？"
+        title={`${deleteTarget?.type === 'expense' ? '支出' : '収入'}の削除`}
+        message={`この${deleteTarget?.type === 'expense' ? '支出' : '収入'}を削除しますか？`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />

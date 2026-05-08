@@ -1,11 +1,10 @@
-export interface Expense {
+export interface Income {
   id: string
   amount: number
-  expenseDate: string
+  incomeDate: string
   categoryId: string
   categoryName: string | null
   description: string | null
-  paymentMethod: string
   memo: string | null
   isPlanned: boolean
   plannedDate: string | null
@@ -13,23 +12,21 @@ export interface Expense {
   updatedAt: string
 }
 
-export interface CreateExpenseRequest {
+export interface CreateIncomeRequest {
   amount: number
-  expenseDate: string
+  incomeDate: string
   categoryId: string
   description?: string
-  paymentMethod?: string
   memo?: string
   isPlanned?: boolean
   plannedDate?: string
 }
 
-export interface UpdateExpenseRequest {
+export interface UpdateIncomeRequest {
   amount: number
-  expenseDate: string
+  incomeDate: string
   categoryId: string
   description?: string
-  paymentMethod: string
   memo?: string
   isPlanned?: boolean
   plannedDate?: string

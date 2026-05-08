@@ -18,6 +18,11 @@ export const expenseApi = {
     return response.data
   },
 
+  getPlanned: async (): Promise<Expense[]> => {
+    const response = await api.get('/expenses/planned')
+    return response.data
+  },
+
   getById: async (id: string): Promise<Expense> => {
     const response = await api.get(`/expenses/${id}`)
     return response.data

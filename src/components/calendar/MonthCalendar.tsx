@@ -3,15 +3,23 @@ import { Box, Paper, Typography, IconButton } from '@mui/material'
 import { ChevronLeft, ChevronRight } from '@mui/icons-material'
 import dayjs from 'dayjs'
 import type { Expense } from '../../types/expense'
+import type { Income } from '../../types/income'
 
 interface Props {
   currentMonth: dayjs.Dayjs
   expenses: Expense[]
+  incomes: Income[]
   onMonthChange: (month: dayjs.Dayjs) => void
   onDayClick: (date: string) => void
 }
 
-export default function MonthCalendar({ currentMonth, expenses, onMonthChange, onDayClick }: Props) {
+export default function MonthCalendar({
+  currentMonth,
+  expenses,
+  incomes,
+  onMonthChange,
+  onDayClick,
+}: Props) {
   const calendarDays = useMemo(() => {
     const startOfMonth = currentMonth.startOf('month')
     const endOfMonth = currentMonth.endOf('month')
@@ -39,6 +47,16 @@ export default function MonthCalendar({ currentMonth, expenses, onMonthChange, o
     return map
   }, [expenses])
 
+  const incomesByDate = useMemo(() => {
+    const map: Record<string, Income[]> = {}
+    incomes.forEach((income) => {
+      const date = income.incomeDate
+      if (!map[date]) map[date] = []
+      map[date].push(income)
+    })
+    return map
+  }, [incomes])
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
       style: 'currency',
@@ -55,9 +73,7 @@ export default function MonthCalendar({ currentMonth, expenses, onMonthChange, o
         <IconButton onClick={() => onMonthChange(currentMonth.subtract(1, 'month'))}>
           <ChevronLeft />
         </IconButton>
-        <Typography variant="h5">
-          {currentMonth.format('YYYY年 M月')}
-        </Typography>
+        <Typography variant="h5">{currentMonth.format('YYYY年 M月')}</Typography>
         <IconButton onClick={() => onMonthChange(currentMonth.add(1, 'month'))}>
           <ChevronRight />
         </IconButton>
@@ -88,9 +104,15 @@ export default function MonthCalendar({ currentMonth, expenses, onMonthChange, o
         {calendarDays.map((day) => {
           const dateStr = day.format('YYYY-MM-DD')
           const dayExpenses = expensesByDate[dateStr] || []
+          const dayIncomes = incomesByDate[dateStr] || []
           const isCurrentMonth = day.month() === currentMonth.month()
           const isToday = day.isSame(dayjs(), 'day')
+          const isFuture = day.isAfter(dayjs(), 'day')
           const dayOfWeek = day.day()
+
+          const totalExpense = dayExpenses.reduce((sum, e) => sum + e.amount, 0)
+          const totalIncome = dayIncomes.reduce((sum, i) => sum + i.amount, 0)
+          const hasData = dayExpenses.length > 0 || dayIncomes.length > 0
 
           return (
             <Box
@@ -102,7 +124,11 @@ export default function MonthCalendar({ currentMonth, expenses, onMonthChange, o
                 borderColor: 'divider',
                 p: 0.5,
                 cursor: 'pointer',
-                backgroundColor: isToday ? 'action.selected' : 'transparent',
+                backgroundColor: isToday
+                  ? 'action.selected'
+                  : isFuture && hasData
+                    ? 'rgba(255, 235, 59, 0.08)'
+                    : 'transparent',
                 opacity: isCurrentMonth ? 1 : 0.4,
                 boxSizing: 'border-box',
                 '&:hover': {
@@ -111,34 +137,68 @@ export default function MonthCalendar({ currentMonth, expenses, onMonthChange, o
               }}
               onClick={() => onDayClick(dateStr)}
             >
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: isToday ? 'bold' : 'normal',
-                  color: dayOfWeek === 0 ? 'error.main' : dayOfWeek === 6 ? 'primary.main' : 'text.primary',
-                }}
-              >
-                {day.date()}
-              </Typography>
-              <Box sx={{ mt: 0.5, overflow: 'hidden', maxHeight: 70 }}>
-                {dayExpenses.slice(0, 3).map((expense) => (
+              {/* 日付 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: isToday ? 'bold' : 'normal',
+                    color:
+                      dayOfWeek === 0 ? 'error.main' : dayOfWeek === 6 ? 'primary.main' : 'text.primary',
+                  }}
+                >
+                  {day.date()}
+                </Typography>
+                {isFuture && hasData && (
+                  <Typography variant="caption" sx={{ color: 'warning.main', fontSize: '0.6rem' }}>
+                    予定
+                  </Typography>
+                )}
+              </Box>
+
+              {/* 収支サマリー */}
+              <Box sx={{ mt: 0.5 }}>
+                {totalIncome > 0 && (
                   <Typography
-                    key={expense.id}
                     variant="caption"
                     sx={{
                       display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      color: 'error.main',
+                      color: 'success.main',
+                      fontWeight: 'bold',
+                      fontSize: '0.7rem',
                     }}
                   >
-                    {expense.description || expense.categoryName}: {formatCurrency(expense.amount)}
+                    +{formatCurrency(totalIncome)}
                   </Typography>
-                ))}
-                {dayExpenses.length > 3 && (
-                  <Typography variant="caption" color="text.secondary">
-                    他 {dayExpenses.length - 3} 件
+                )}
+                {totalExpense > 0 && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      color: 'error.main',
+                      fontWeight: 'bold',
+                      fontSize: '0.7rem',
+                    }}
+                  >
+                    -{formatCurrency(totalExpense)}
+                  </Typography>
+                )}
+
+                {/* 件数表示 */}
+                {hasData && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      color: 'text.secondary',
+                      fontSize: '0.6rem',
+                      mt: 0.5,
+                    }}
+                  >
+                    {dayIncomes.length > 0 && `収入${dayIncomes.length}件`}
+                    {dayIncomes.length > 0 && dayExpenses.length > 0 && ' / '}
+                    {dayExpenses.length > 0 && `支出${dayExpenses.length}件`}
                   </Typography>
                 )}
               </Box>
