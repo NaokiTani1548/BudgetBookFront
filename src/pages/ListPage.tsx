@@ -4,12 +4,14 @@ import { useExpenses } from '../hooks/useExpenses'
 import { useIncomes } from '../hooks/useIncomes'
 import { useCategories } from '../hooks/useCategories'
 import { useNotification } from '../hooks/useNotification'
+import { useCurrentBalance } from '../hooks/useCurrentBalance'
 import ExpenseForm from '../components/expense/ExpenseForm'
 import ExpenseList from '../components/expense/ExpenseList'
 import ExpenseEditDialog from '../components/expense/ExpenseEditDialog'
 import IncomeForm from '../components/income/IncomeForm'
 import IncomeList from '../components/income/IncomeList'
 import IncomeEditDialog from '../components/income/IncomeEditDialog'
+import BalanceSummary from '../components/common/BalanceSummary'
 import Notification from '../components/common/Notification'
 import Loading from '../components/common/Loading'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -21,6 +23,7 @@ export default function ListPage() {
   const { incomes, loading: incomeLoading, createIncome, updateIncome, deleteIncome } = useIncomes()
   const { expenseCategories, incomeCategories, createCategory } = useCategories()
   const { notification, showSuccess, showError, clearNotification } = useNotification()
+  const { summary, loading: balanceLoading, refetch: refetchBalance } = useCurrentBalance()
 
   const [tabIndex, setTabIndex] = useState(0)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
@@ -31,6 +34,7 @@ export default function ListPage() {
     try {
       await createExpense(data)
       showSuccess('支出を追加しました')
+      refetchBalance()
     } catch {
       showError('支出の追加に失敗しました')
     }
@@ -41,6 +45,7 @@ export default function ListPage() {
       await updateExpense(id, data)
       showSuccess('支出を更新しました')
       setEditingExpense(null)
+      refetchBalance()
     } catch {
       showError('支出の更新に失敗しました')
     }
@@ -50,6 +55,7 @@ export default function ListPage() {
     try {
       await createIncome(data)
       showSuccess('収入を追加しました')
+      refetchBalance()
     } catch {
       showError('収入の追加に失敗しました')
     }
@@ -60,6 +66,7 @@ export default function ListPage() {
       await updateIncome(id, data)
       showSuccess('収入を更新しました')
       setEditingIncome(null)
+      refetchBalance()
     } catch {
       showError('収入の更新に失敗しました')
     }
@@ -75,6 +82,7 @@ export default function ListPage() {
       }
       showSuccess(`${deleteTarget.type === 'expense' ? '支出' : '収入'}を削除しました`)
       setDeleteTarget(null)
+      refetchBalance()
     } catch {
       showError('削除に失敗しました')
     }
@@ -87,6 +95,9 @@ export default function ListPage() {
       <Typography variant="h4" component="h1" gutterBottom>
         💰 収支一覧
       </Typography>
+
+      {/* 現在の総資産 */}
+      <BalanceSummary summary={summary} loading={balanceLoading} />
 
       <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 3 }}>
         <Tab label={`支出 (${expenses.length})`} />

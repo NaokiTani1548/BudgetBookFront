@@ -4,7 +4,9 @@ import { Container, Typography } from '@mui/material'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
+import { useCurrentBalance } from '../hooks/useCurrentBalance'
 import MonthCalendar from '../components/calendar/MonthCalendar'
+import BalanceSummary from '../components/common/BalanceSummary'
 import Loading from '../components/common/Loading'
 import type { Expense } from '../types/expense'
 import type { Income } from '../types/income'
@@ -15,6 +17,7 @@ export default function CalendarPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(dayjs())
+  const { summary, loading: balanceLoading } = useCurrentBalance()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,6 +54,9 @@ export default function CalendarPage() {
       <Typography variant="h4" component="h1" gutterBottom>
         📅 カレンダー
       </Typography>
+
+      {/* 現在の総資産 */}
+      <BalanceSummary summary={summary} loading={balanceLoading} />
 
       <MonthCalendar
         currentMonth={currentMonth}
