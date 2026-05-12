@@ -25,31 +25,11 @@ export default function BalanceSummary({ summary, loading }: Props) {
 
   return (
     <Paper sx={{ p: 3, mb: 3, backgroundColor: 'rgba(33, 150, 243, 0.08)' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <AccountBalance color="primary" />
-        <Typography variant="h6">現在の資産状況</Typography>
-      </Box>
-
-      <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <Box>
           <Typography variant="body2" color="text.secondary">
-            総収入
-          </Typography>
-          <Typography variant="h6" sx={{ color: 'success.main' }}>
-            +{formatCurrency(summary.currentBalance + summary.plannedExpense)}
-          </Typography>
-        </Box>
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            総支出
-          </Typography>
-          <Typography variant="h6" sx={{ color: 'error.main' }}>
-            -{formatCurrency(summary.plannedExpense)}
-          </Typography>
-        </Box>
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            総資産
+            現在の総資産
           </Typography>
           <Typography
             variant="h4"

@@ -51,13 +51,47 @@ export default function DayDetailPage() {
     if (!date) return
     try {
       setLoading(true)
-      const [expensesData, incomesData, summaryData] = await Promise.all([
-        expenseApi.getByDateRange(date, date),
-        incomeApi.getByDateRange(date, date),
+
+      // 通常データと予定データを両方取得
+      const [
+        actualExpenses,
+        plannedExpenses,
+        actualIncomes,
+        plannedIncomes,
+        summaryData,
+      ] = await Promise.all([
+        expenseApi.getByDateRange(date, date).catch(() => []),
+        expenseApi.getPlanned().catch(() => []),
+        incomeApi.getByDateRange(date, date).catch(() => []),
+        incomeApi.getPlanned().catch(() => []),
         summaryApi.getForecast(date),
       ])
-      setExpenses(expensesData)
-      setIncomes(incomesData)
+
+      // 日付でフィルタリングして結合
+      const filteredPlannedExpenses = plannedExpenses.filter(
+        (e) => e.expenseDate === date || e.plannedDate === date
+      )
+      const filteredPlannedIncomes = plannedIncomes.filter(
+        (i) => i.incomeDate === date || i.plannedDate === date
+      )
+
+      // 重複を除いて結合（IDベースで重複チェック）
+      const allExpenses = [...actualExpenses]
+      filteredPlannedExpenses.forEach((pe) => {
+        if (!allExpenses.some((e) => e.id === pe.id)) {
+          allExpenses.push(pe)
+        }
+      })
+
+      const allIncomes = [...actualIncomes]
+      filteredPlannedIncomes.forEach((pi) => {
+        if (!allIncomes.some((i) => i.id === pi.id)) {
+          allIncomes.push(pi)
+        }
+      })
+
+      setExpenses(allExpenses)
+      setIncomes(allIncomes)
       setSummary(summaryData)
     } catch (err) {
       showError('データの取得に失敗しました')

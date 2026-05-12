@@ -41,25 +41,47 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
     e.preventDefault()
     if (!amount || !selectedCategoryId) return
 
-    onSubmit({
+    const today = dayjs().format('YYYY-MM-DD')
+    const isPlanned = expenseDate > today
+
+    const requestData: CreateExpenseRequest = {
       amount: Number(amount),
       expenseDate,
       categoryId: selectedCategoryId,
       description: description || undefined,
       paymentMethod,
       memo: memo || undefined,
-    })
+      isPlanned,
+      plannedDate: isPlanned ? expenseDate : undefined,
+    }
+
+    // デバッグ用ログ
+    console.log('=== ExpenseForm Debug ===')
+    console.log('today:', today)
+    console.log('expenseDate:', expenseDate)
+    console.log('isPlanned:', isPlanned)
+    console.log('requestData:', requestData)
+
+    onSubmit(requestData)
 
     setAmount('')
     setDescription('')
     setMemo('')
   }
 
+  const today = dayjs().format('YYYY-MM-DD')
+  const isPlannedDate = expenseDate > today
+
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
         支出を追加
       </Typography>
+        {isPlannedDate && (
+          <Typography variant="body2" sx={{ color: 'warning.main' }}>
+            （予定として登録されます）
+          </Typography>
+        )}
       <Box component="form" onSubmit={handleSubmit}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <TextField
@@ -115,7 +137,7 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             startIcon={<Add />}
             sx={{ height: 56 }}
           >
-            追加
+            {isPlannedDate ? '予定を追加' : '追加'}
           </Button>
         </Box>
       </Box>

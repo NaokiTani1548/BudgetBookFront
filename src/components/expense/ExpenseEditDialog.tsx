@@ -11,7 +11,9 @@ import {
   Select,
   MenuItem,
   Box,
+  Typography,
 } from '@mui/material'
+import dayjs from 'dayjs'
 import type { Expense, UpdateExpenseRequest } from '../../types/expense'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
@@ -32,6 +34,9 @@ function ExpenseEditForm({ expense, categories, onClose, onSubmit, onCreateCateg
   const [paymentMethod, setPaymentMethod] = useState(expense.paymentMethod)
   const [memo, setMemo] = useState(expense.memo || '')
 
+  const today = dayjs().format('YYYY-MM-DD')
+  const isPlannedDate = expenseDate > today
+
   const handleSubmit = () => {
     if (!amount || !categoryId) return
 
@@ -42,12 +47,23 @@ function ExpenseEditForm({ expense, categories, onClose, onSubmit, onCreateCateg
       description: description || undefined,
       paymentMethod,
       memo: memo || undefined,
+      isPlanned: isPlannedDate,
+      plannedDate: isPlannedDate ? expenseDate : undefined,
     })
   }
 
   return (
     <>
-      <DialogTitle>支出を編集</DialogTitle>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          支出を編集
+          {isPlannedDate && (
+            <Typography variant="body2" sx={{ color: 'warning.main' }}>
+              （予定）
+            </Typography>
+          )}
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField

@@ -26,13 +26,47 @@ export default function CalendarPage() {
         const startOfMonth = currentMonth.startOf('month').format('YYYY-MM-DD')
         const endOfMonth = currentMonth.endOf('month').format('YYYY-MM-DD')
 
-        const [expensesData, incomesData] = await Promise.all([
-          expenseApi.getByDateRange(startOfMonth, endOfMonth),
-          incomeApi.getByDateRange(startOfMonth, endOfMonth),
+        // 通常データと予定データを両方取得
+        const [
+          actualExpenses,
+          plannedExpenses,
+          actualIncomes,
+          plannedIncomes,
+        ] = await Promise.all([
+          expenseApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
+          expenseApi.getPlanned().catch(() => []),
+          incomeApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
+          incomeApi.getPlanned().catch(() => []),
         ])
 
-        setExpenses(expensesData)
-        setIncomes(incomesData)
+        // 予定データを当月でフィルタリング
+        const filteredPlannedExpenses = plannedExpenses.filter((e) => {
+          const expDate = e.expenseDate || e.plannedDate
+          return expDate && expDate >= startOfMonth && expDate <= endOfMonth
+        })
+
+        const filteredPlannedIncomes = plannedIncomes.filter((i) => {
+          const incDate = i.incomeDate || i.plannedDate
+          return incDate && incDate >= startOfMonth && incDate <= endOfMonth
+        })
+
+        // 重複を除いて結合（IDベースで重複チェック）
+        const allExpenses = [...actualExpenses]
+        filteredPlannedExpenses.forEach((pe) => {
+          if (!allExpenses.some((e) => e.id === pe.id)) {
+            allExpenses.push(pe)
+          }
+        })
+
+        const allIncomes = [...actualIncomes]
+        filteredPlannedIncomes.forEach((pi) => {
+          if (!allIncomes.some((i) => i.id === pi.id)) {
+            allIncomes.push(pi)
+          }
+        })
+
+        setExpenses(allExpenses)
+        setIncomes(allIncomes)
       } catch (err) {
         console.error('データの取得に失敗しました', err)
       } finally {

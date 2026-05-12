@@ -7,6 +7,7 @@ import {
   TextField,
   Button,
   Box,
+  Typography,
 } from '@mui/material'
 import dayjs from 'dayjs'
 import type { Income, UpdateIncomeRequest } from '../../types/income'
@@ -28,6 +29,9 @@ function IncomeEditForm({ income, categories, onClose, onSubmit, onCreateCategor
   const [description, setDescription] = useState(income.description || '')
   const [memo, setMemo] = useState(income.memo || '')
 
+    const today = dayjs().format('YYYY-MM-DD')
+  const isPlannedDate = incomeDate > today
+
   const handleSubmit = () => {
     if (!amount || !categoryId) return
 
@@ -47,7 +51,16 @@ function IncomeEditForm({ income, categories, onClose, onSubmit, onCreateCategor
 
   return (
     <>
-      <DialogTitle>収入を編集</DialogTitle>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          収入を編集
+          {isPlannedDate && (
+            <Typography variant="body2" sx={{ color: 'warning.main' }}>
+              （予定）
+            </Typography>
+          )}
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField

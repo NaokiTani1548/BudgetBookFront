@@ -53,12 +53,19 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
     setDescription('')
     setMemo('')
   }
+  const today = dayjs().format('YYYY-MM-DD')
+  const isPlannedDate = incomeDate > today
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        収入を追加
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Typography variant="h6">収入を追加</Typography>
+        {isPlannedDate && (
+          <Typography variant="body2" sx={{ color: 'warning.main' }}>
+            （予定として登録されます）
+          </Typography>
+        )}
+      </Box>
       <Box component="form" onSubmit={handleSubmit}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <TextField
