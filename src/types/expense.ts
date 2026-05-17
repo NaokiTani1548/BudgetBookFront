@@ -7,8 +7,6 @@ export interface Expense {
   description: string | null
   paymentMethod: string
   memo: string | null
-  isPlanned: boolean
-  plannedDate: string | null
   createdAt: string
   updatedAt: string
 }
@@ -20,8 +18,6 @@ export interface CreateExpenseRequest {
   description?: string
   paymentMethod?: string
   memo?: string
-  isPlanned?: boolean
-  plannedDate?: string
 }
 
 export interface UpdateExpenseRequest {
@@ -31,6 +27,4 @@ export interface UpdateExpenseRequest {
   description?: string
   paymentMethod: string
   memo?: string
-  isPlanned?: boolean
-  plannedDate?: string
 }

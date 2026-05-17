@@ -12,6 +12,7 @@ import {
 import { Edit, Delete } from '@mui/icons-material'
 import dayjs from 'dayjs'
 import type { Income } from '../../types/income'
+import { isPlanned } from '../../utils/dateUtils'
 
 interface Props {
   incomes: Income[]
@@ -49,42 +50,45 @@ export default function IncomeList({ incomes, onEdit, onDelete, showDate = true 
               </TableCell>
             </TableRow>
           ) : (
-            incomes.map((income) => (
-              <TableRow key={income.id} hover>
-                {showDate && (
+            incomes.map((income) => {
+              const planned = isPlanned(income.incomeDate)
+              return (
+                <TableRow key={income.id} hover>
+                  {showDate && (
+                    <TableCell>
+                      {dayjs(income.incomeDate).format('YYYY/MM/DD')}
+                    </TableCell>
+                  )}
                   <TableCell>
-                    {dayjs(income.incomeDate).format('YYYY/MM/DD')}
+                    <Chip
+                      label={income.categoryName || '未分類'}
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                    />
                   </TableCell>
-                )}
-                <TableCell>
-                  <Chip
-                    label={income.categoryName || '未分類'}
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                  />
-                </TableCell>
-                <TableCell>{income.description || '-'}</TableCell>
-                <TableCell align="right" sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                  +{formatCurrency(income.amount)}
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={income.isPlanned ? '予定' : '実績'}
-                    size="small"
-                    color={income.isPlanned ? 'warning' : 'default'}
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton size="small" onClick={() => onEdit(income)}>
-                    <Edit fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => onDelete(income.id)}>
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))
+                  <TableCell>{income.description || '-'}</TableCell>
+                  <TableCell align="right" sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                    +{formatCurrency(income.amount)}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={planned ? '予定' : '実績'}
+                      size="small"
+                      color={planned ? 'warning' : 'default'}
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton size="small" onClick={() => onEdit(income)}>
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => onDelete(income.id)}>
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              )
+            })
           )}
         </TableBody>
       </Table>

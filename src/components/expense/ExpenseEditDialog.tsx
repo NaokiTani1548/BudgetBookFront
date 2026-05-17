@@ -13,10 +13,10 @@ import {
   Box,
   Typography,
 } from '@mui/material'
-import dayjs from 'dayjs'
 import type { Expense, UpdateExpenseRequest } from '../../types/expense'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
+import { isPlanned } from '../../utils/dateUtils'
 
 interface FormProps {
   expense: Expense
@@ -34,8 +34,7 @@ function ExpenseEditForm({ expense, categories, onClose, onSubmit, onCreateCateg
   const [paymentMethod, setPaymentMethod] = useState(expense.paymentMethod)
   const [memo, setMemo] = useState(expense.memo || '')
 
-  const today = dayjs().format('YYYY-MM-DD')
-  const isPlannedDate = expenseDate > today
+  const isPlannedDate = isPlanned(expenseDate)
 
   const handleSubmit = () => {
     if (!amount || !categoryId) return
@@ -47,8 +46,6 @@ function ExpenseEditForm({ expense, categories, onClose, onSubmit, onCreateCateg
       description: description || undefined,
       paymentMethod,
       memo: memo || undefined,
-      isPlanned: isPlannedDate,
-      plannedDate: isPlannedDate ? expenseDate : undefined,
     })
   }
 
@@ -117,7 +114,7 @@ function ExpenseEditForm({ expense, categories, onClose, onSubmit, onCreateCateg
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>キャンセル</Button>
-        <Button onClick={handleSubmit} variant="contained">
+        <Button onClick={handleSubmit} variant="contained" color={isPlannedDate ? 'warning' : 'primary'}>
           保存
         </Button>
       </DialogActions>

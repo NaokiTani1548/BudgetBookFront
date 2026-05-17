@@ -4,6 +4,7 @@ import { Container, Typography } from '@mui/material'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
+import { recurringExpenseApi } from '../api/recurringExpenseApi'
 import { useCurrentBalance } from '../hooks/useCurrentBalance'
 import MonthCalendar from '../components/calendar/MonthCalendar'
 import BalanceSummary from '../components/common/BalanceSummary'
@@ -17,7 +18,7 @@ export default function CalendarPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(dayjs())
-  const { summary, loading: balanceLoading } = useCurrentBalance()
+  const { summary, loading: balanceLoading, refetch: refetchBalance } = useCurrentBalance()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,6 +26,9 @@ export default function CalendarPage() {
         setLoading(true)
         const startOfMonth = currentMonth.startOf('month').format('YYYY-MM-DD')
         const endOfMonth = currentMonth.endOf('month').format('YYYY-MM-DD')
+
+        // 定期支出APIを叩いて未処理分を自動生成
+        await recurringExpenseApi.getAll().catch(() => {})
 
         // 通常データと予定データを両方取得
         const [
@@ -39,15 +43,13 @@ export default function CalendarPage() {
           incomeApi.getPlanned().catch(() => []),
         ])
 
-        // 予定データを当月でフィルタリング
+        // 予定データを当月でフィルタリング（expenseDateのみで判定）
         const filteredPlannedExpenses = plannedExpenses.filter((e) => {
-          const expDate = e.expenseDate || e.plannedDate
-          return expDate && expDate >= startOfMonth && expDate <= endOfMonth
+          return e.expenseDate >= startOfMonth && e.expenseDate <= endOfMonth
         })
 
         const filteredPlannedIncomes = plannedIncomes.filter((i) => {
-          const incDate = i.incomeDate || i.plannedDate
-          return incDate && incDate >= startOfMonth && incDate <= endOfMonth
+          return i.incomeDate >= startOfMonth && i.incomeDate <= endOfMonth
         })
 
         // 重複を除いて結合（IDベースで重複チェック）
@@ -67,6 +69,9 @@ export default function CalendarPage() {
 
         setExpenses(allExpenses)
         setIncomes(allIncomes)
+
+        // 残高も更新
+        refetchBalance()
       } catch (err) {
         console.error('データの取得に失敗しました', err)
       } finally {
@@ -75,7 +80,7 @@ export default function CalendarPage() {
     }
 
     fetchData()
-  }, [currentMonth])
+  }, [currentMonth, refetchBalance])
 
   const handleDayClick = (date: string) => {
     navigate(`/day/${date}`)

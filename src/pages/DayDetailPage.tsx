@@ -6,6 +6,7 @@ import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
 import { summaryApi } from '../api/summaryApi'
+import { recurringExpenseApi } from '../api/recurringExpenseApi'
 import { useCategories } from '../hooks/useCategories'
 import { useNotification } from '../hooks/useNotification'
 import ExpenseList from '../components/expense/ExpenseList'
@@ -20,6 +21,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
 import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
 import type { ForecastSummary } from '../types/summary'
+import { isPlanned } from '../utils/dateUtils'
 
 export default function DayDetailPage() {
   const { date } = useParams<{ date: string }>()
@@ -39,7 +41,7 @@ export default function DayDetailPage() {
 
   const isFuture = useMemo(() => {
     if (!date) return false
-    return dayjs(date).isAfter(dayjs(), 'day')
+    return isPlanned(date)
   }, [date])
 
   const isToday = useMemo(() => {
@@ -51,6 +53,9 @@ export default function DayDetailPage() {
     if (!date) return
     try {
       setLoading(true)
+
+      // 定期支出APIを叩いて未処理分を自動生成
+      await recurringExpenseApi.getAll().catch(() => {})
 
       // 通常データと予定データを両方取得
       const [
@@ -67,12 +72,12 @@ export default function DayDetailPage() {
         summaryApi.getForecast(date),
       ])
 
-      // 日付でフィルタリングして結合
+      // 日付でフィルタリングして結合（expenseDateのみで判定）
       const filteredPlannedExpenses = plannedExpenses.filter(
-        (e) => e.expenseDate === date || e.plannedDate === date
+        (e) => e.expenseDate === date
       )
       const filteredPlannedIncomes = plannedIncomes.filter(
-        (i) => i.incomeDate === date || i.plannedDate === date
+        (i) => i.incomeDate === date
       )
 
       // 重複を除いて結合（IDベースで重複チェック）
@@ -142,7 +147,7 @@ export default function DayDetailPage() {
       setShowAddForm(null)
       const summaryData = await summaryApi.getForecast(date!)
       setSummary(summaryData)
-    } catch {
+    } catch  {
       showError('収入の追加に失敗しました')
     }
   }

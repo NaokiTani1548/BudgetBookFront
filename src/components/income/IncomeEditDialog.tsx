@@ -9,10 +9,10 @@ import {
   Box,
   Typography,
 } from '@mui/material'
-import dayjs from 'dayjs'
 import type { Income, UpdateIncomeRequest } from '../../types/income'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
+import { isPlanned } from '../../utils/dateUtils'
 
 interface FormProps {
   income: Income
@@ -29,14 +29,10 @@ function IncomeEditForm({ income, categories, onClose, onSubmit, onCreateCategor
   const [description, setDescription] = useState(income.description || '')
   const [memo, setMemo] = useState(income.memo || '')
 
-    const today = dayjs().format('YYYY-MM-DD')
-  const isPlannedDate = incomeDate > today
+  const isPlannedDate = isPlanned(incomeDate)
 
   const handleSubmit = () => {
     if (!amount || !categoryId) return
-
-    const today = dayjs().format('YYYY-MM-DD')
-    const isPlanned = incomeDate > today
 
     onSubmit(income.id, {
       amount: Number(amount),
@@ -44,8 +40,6 @@ function IncomeEditForm({ income, categories, onClose, onSubmit, onCreateCategor
       categoryId,
       description: description || undefined,
       memo: memo || undefined,
-      isPlanned,
-      plannedDate: isPlanned ? incomeDate : undefined,
     })
   }
 
@@ -103,7 +97,7 @@ function IncomeEditForm({ income, categories, onClose, onSubmit, onCreateCategor
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>キャンセル</Button>
-        <Button onClick={handleSubmit} variant="contained" color="success">
+        <Button onClick={handleSubmit} variant="contained" color={isPlannedDate ? 'warning' : 'success'}>
           保存
         </Button>
       </DialogActions>

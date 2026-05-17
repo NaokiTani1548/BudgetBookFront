@@ -15,6 +15,7 @@ import dayjs from 'dayjs'
 import type { CreateExpenseRequest } from '../../types/expense'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
+import { isPlanned } from '../../utils/dateUtils'
 
 interface Props {
   categories: Category[]
@@ -41,47 +42,32 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
     e.preventDefault()
     if (!amount || !selectedCategoryId) return
 
-    const today = dayjs().format('YYYY-MM-DD')
-    const isPlanned = expenseDate > today
-
-    const requestData: CreateExpenseRequest = {
+    onSubmit({
       amount: Number(amount),
       expenseDate,
       categoryId: selectedCategoryId,
       description: description || undefined,
       paymentMethod,
       memo: memo || undefined,
-      isPlanned,
-      plannedDate: isPlanned ? expenseDate : undefined,
-    }
-
-    // デバッグ用ログ
-    console.log('=== ExpenseForm Debug ===')
-    console.log('today:', today)
-    console.log('expenseDate:', expenseDate)
-    console.log('isPlanned:', isPlanned)
-    console.log('requestData:', requestData)
-
-    onSubmit(requestData)
+    })
 
     setAmount('')
     setDescription('')
     setMemo('')
   }
 
-  const today = dayjs().format('YYYY-MM-DD')
-  const isPlannedDate = expenseDate > today
+  const isPlannedDate = isPlanned(expenseDate)
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        支出を追加
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Typography variant="h6">支出を追加</Typography>
         {isPlannedDate && (
           <Typography variant="body2" sx={{ color: 'warning.main' }}>
             （予定として登録されます）
           </Typography>
         )}
+      </Box>
       <Box component="form" onSubmit={handleSubmit}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <TextField
@@ -134,6 +120,7 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
           <Button
             type="submit"
             variant="contained"
+            color={isPlannedDate ? 'warning' : 'error'}
             startIcon={<Add />}
             sx={{ height: 56 }}
           >

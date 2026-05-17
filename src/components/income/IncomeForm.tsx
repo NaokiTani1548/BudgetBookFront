@@ -11,6 +11,7 @@ import dayjs from 'dayjs'
 import type { CreateIncomeRequest } from '../../types/income'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
+import { isPlanned } from '../../utils/dateUtils'
 
 interface Props {
   categories: Category[]
@@ -36,25 +37,20 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
     e.preventDefault()
     if (!amount || !selectedCategoryId) return
 
-    const today = dayjs().format('YYYY-MM-DD')
-    const isPlanned = incomeDate > today
-
     onSubmit({
       amount: Number(amount),
       incomeDate,
       categoryId: selectedCategoryId,
       description: description || undefined,
       memo: memo || undefined,
-      isPlanned,
-      plannedDate: isPlanned ? incomeDate : undefined,
     })
 
     setAmount('')
     setDescription('')
     setMemo('')
   }
-  const today = dayjs().format('YYYY-MM-DD')
-  const isPlannedDate = incomeDate > today
+
+  const isPlannedDate = isPlanned(incomeDate)
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -107,11 +103,11 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
           <Button
             type="submit"
             variant="contained"
-            color="success"
+            color={isPlannedDate ? 'warning' : 'success'}
             startIcon={<Add />}
             sx={{ height: 56 }}
           >
-            追加
+            {isPlannedDate ? '予定を追加' : '追加'}
           </Button>
         </Box>
       </Box>
