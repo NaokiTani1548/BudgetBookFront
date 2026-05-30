@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Typography } from '@mui/material'
+import { Container, Typography, Box } from '@mui/material'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
@@ -8,6 +8,7 @@ import { recurringExpenseApi } from '../api/recurringExpenseApi'
 import { useCurrentBalance } from '../hooks/useCurrentBalance'
 import MonthCalendar from '../components/calendar/MonthCalendar'
 import BalanceSummary from '../components/common/BalanceSummary'
+import ExpenseByCategoryChart from '../components/chart/ExpenseByCategoryChart'
 import Loading from '../components/common/Loading'
 import type { Expense } from '../types/expense'
 import type { Income } from '../types/income'
@@ -43,7 +44,7 @@ export default function CalendarPage() {
           incomeApi.getPlanned().catch(() => []),
         ])
 
-        // 予定データを当月でフィルタリング（expenseDateのみで判定）
+        // 予定データを当月でフィルタリング
         const filteredPlannedExpenses = plannedExpenses.filter((e) => {
           return e.expenseDate >= startOfMonth && e.expenseDate <= endOfMonth
         })
@@ -97,13 +98,33 @@ export default function CalendarPage() {
       {/* 現在の総資産 */}
       <BalanceSummary summary={summary} loading={balanceLoading} />
 
-      <MonthCalendar
-        currentMonth={currentMonth}
-        expenses={expenses}
-        incomes={incomes}
-        onMonthChange={setCurrentMonth}
-        onDayClick={handleDayClick}
-      />
+      {/* カレンダーとグラフを横並び */}
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 3,
+          flexDirection: { xs: 'column', md: 'row' },
+        }}
+      >
+        {/* カレンダー */}
+        <Box sx={{ flex: 2 }}>
+          <MonthCalendar
+            currentMonth={currentMonth}
+            expenses={expenses}
+            incomes={incomes}
+            onMonthChange={setCurrentMonth}
+            onDayClick={handleDayClick}
+          />
+        </Box>
+
+        {/* カテゴリ別支出グラフ */}
+        <Box sx={{ flex: 1 }}>
+          <ExpenseByCategoryChart
+            expenses={expenses}
+            title={`${currentMonth.format('YYYY年M月')}のカテゴリ別支出`}
+          />
+        </Box>
+      </Box>
     </Container>
   )
 }
