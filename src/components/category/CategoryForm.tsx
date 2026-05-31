@@ -6,25 +6,34 @@ import {
   DialogActions,
   TextField,
   Button,
+  Box,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Box,
 } from '@mui/material'
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../../types/category'
 
 interface Props {
   open: boolean
   category?: Category | null
+  type?: 'EXPENSE' | 'INCOME'
   onClose: () => void
   onSubmit: (data: CreateCategoryRequest | UpdateCategoryRequest) => void
 }
 
-export default function CategoryForm({ open, category, onClose, onSubmit }: Props) {
+export default function CategoryForm({
+  open,
+  category,
+  type: defaultType,
+  onClose,
+  onSubmit,
+}: Props) {
   const [name, setName] = useState(category?.name || '')
-  const [type, setType] = useState<'EXPENSE' | 'INCOME'>(category?.type || 'EXPENSE')
-  const [color, setColor] = useState(category?.color || '#2196f3')
+  const [type, setType] = useState<'EXPENSE' | 'INCOME'>(
+    category?.type || defaultType || 'EXPENSE'
+  )
+  const [color, setColor] = useState(category?.color || '')
 
   const handleSubmit = () => {
     if (!name.trim()) return
@@ -32,19 +41,34 @@ export default function CategoryForm({ open, category, onClose, onSubmit }: Prop
     onSubmit({
       name: name.trim(),
       type,
-      color,
+      color: color || undefined,
     })
 
+    // フォームをリセット
     if (!category) {
       setName('')
-      setType('EXPENSE')
-      setColor('#2196f3')
+      setColor('')
     }
   }
 
+  // ダイアログを閉じる際にフォームをリセット
+  const handleClose = () => {
+    if (!category) {
+      setName('')
+      setType(defaultType || 'EXPENSE')
+      setColor('')
+    }
+    onClose()
+  }
+
+  // typeが固定されているかどうか（CategorySelectWithCreateから呼ばれた場合）
+  const isTypeFixed = !!defaultType
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{category ? 'カテゴリを編集' : 'カテゴリを追加'}</DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {category ? '🏷️ カテゴリを編集' : '🏷️ カテゴリを追加'}
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField
@@ -53,31 +77,38 @@ export default function CategoryForm({ open, category, onClose, onSubmit }: Prop
             onChange={(e) => setName(e.target.value)}
             required
             fullWidth
-            autoFocus
+            placeholder="例: 食費、交通費、給与"
           />
-          <FormControl fullWidth>
-            <InputLabel>タイプ</InputLabel>
-            <Select
-              value={type}
-              label="タイプ"
-              onChange={(e) => setType(e.target.value as 'EXPENSE' | 'INCOME')}
-            >
-              <MenuItem value="EXPENSE">支出</MenuItem>
-              <MenuItem value="INCOME">収入</MenuItem>
-            </Select>
-          </FormControl>
+          {!isTypeFixed && (
+            <FormControl fullWidth>
+              <InputLabel>種類</InputLabel>
+              <Select
+                value={type}
+                label="種類"
+                onChange={(e) => setType(e.target.value as 'EXPENSE' | 'INCOME')}
+              >
+                <MenuItem value="EXPENSE">💸 支出</MenuItem>
+                <MenuItem value="INCOME">💰 収入</MenuItem>
+              </Select>
+            </FormControl>
+          )}
           <TextField
-            label="カラー"
-            type="color"
+            label="カラー（任意）"
             value={color}
             onChange={(e) => setColor(e.target.value)}
             fullWidth
+            placeholder="#FF5722"
+            helperText="カラーコードを入力（例: #FF5722）"
           />
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>キャンセル</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!name.trim()}>
+        <Button onClick={handleClose}>キャンセル</Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={!name.trim()}
+        >
           {category ? '更新' : '作成'}
         </Button>
       </DialogActions>

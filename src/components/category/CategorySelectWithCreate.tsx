@@ -4,22 +4,22 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  ListItemIcon,
-  ListItemText,
+  type SxProps,
+  type Theme,
 } from '@mui/material'
-import { Add } from '@mui/icons-material'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategoryForm from './CategoryForm'
 
 interface Props {
   categories: Category[]
   value: string
-  onChange: (categoryId: string) => void
+  onChange: (value: string) => void  // null を削除
   onCreateCategory: (data: CreateCategoryRequest) => Promise<Category>
   type: 'EXPENSE' | 'INCOME'
   label?: string
+  sx?: SxProps<Theme>
   fullWidth?: boolean
-  sx?: object
+  size?: 'small' | 'medium'
 }
 
 export default function CategorySelectWithCreate({
@@ -29,28 +29,29 @@ export default function CategorySelectWithCreate({
   onCreateCategory,
   type,
   label = 'カテゴリ',
-  fullWidth = false,
   sx,
+  fullWidth,
+  size = 'medium',
 }: Props) {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
 
-  const handleChange = (selectedValue: string) => {
-    if (selectedValue === '__create__') {
-      setCreateDialogOpen(true)
+  const handleChange = (newValue: string) => {
+    if (newValue === '__create__') {
+      setFormOpen(true)
     } else {
-      onChange(selectedValue)
+      onChange(newValue)
     }
   }
 
-  const handleCreateCategory = async (data: CreateCategoryRequest) => {
-    const newCategory = await onCreateCategory({ ...data, type })
+  const handleCreate = async (data: CreateCategoryRequest) => {
+    const newCategory = await onCreateCategory(data)
     onChange(newCategory.id)
-    setCreateDialogOpen(false)
+    setFormOpen(false)
   }
 
   return (
     <>
-      <FormControl fullWidth={fullWidth} sx={sx}>
+      <FormControl sx={sx} fullWidth={fullWidth} size={size}>
         <InputLabel>{label}</InputLabel>
         <Select
           value={value}
@@ -62,19 +63,17 @@ export default function CategorySelectWithCreate({
               {cat.name}
             </MenuItem>
           ))}
-          <MenuItem value="__create__" sx={{ color: 'primary.main' }}>
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <Add color="primary" />
-            </ListItemIcon>
-            <ListItemText primary="新規作成..." />
+          <MenuItem value="__create__" sx={{ color: 'primary.main', fontWeight: 500 }}>
+            ＋ 新規作成...
           </MenuItem>
         </Select>
       </FormControl>
 
       <CategoryForm
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onSubmit={handleCreateCategory}
+        open={formOpen}
+        type={type}
+        onClose={() => setFormOpen(false)}
+        onSubmit={handleCreate}
       />
     </>
   )

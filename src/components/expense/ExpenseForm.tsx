@@ -9,6 +9,8 @@ import {
   MenuItem,
   Paper,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import { Add } from '@mui/icons-material'
 import dayjs from 'dayjs'
@@ -25,6 +27,9 @@ interface Props {
 }
 
 export default function ExpenseForm({ categories, onSubmit, onCreateCategory, initialDate }: Props) {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
   const [amount, setAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState(initialDate || dayjs().format('YYYY-MM-DD'))
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -59,24 +64,31 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
   const isPlannedDate = isPlanned(expenseDate)
 
   return (
-    <Paper sx={{ p: 3, mb: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Typography variant="h6">支出を追加</Typography>
+        <Typography variant="h6">💸 支出を追加</Typography>
         {isPlannedDate && (
           <Typography variant="body2" sx={{ color: 'warning.main' }}>
-            （予定として登録されます）
+            （予定）
           </Typography>
         )}
       </Box>
       <Box component="form" onSubmit={handleSubmit}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(auto-fit, minmax(140px, 1fr))' },
+            gap: 2,
+          }}
+        >
           <TextField
             label="金額"
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
-            sx={{ width: 150 }}
+            fullWidth
+            size={isMobile ? 'small' : 'medium'}
           />
           <TextField
             label="日付"
@@ -84,7 +96,8 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             value={expenseDate}
             onChange={(e) => setExpenseDate(e.target.value)}
             required
-            sx={{ width: 170 }}
+            fullWidth
+            size={isMobile ? 'small' : 'medium'}
           />
           <CategorySelectWithCreate
             categories={categories}
@@ -92,37 +105,43 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             onChange={setCategoryId}
             onCreateCategory={onCreateCategory}
             type="EXPENSE"
-            sx={{ width: 180 }}
+            fullWidth
+            size={isMobile ? 'small' : 'medium'}
           />
-          <FormControl sx={{ width: 120 }}>
+          <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
             <InputLabel>支払方法</InputLabel>
             <Select
               value={paymentMethod}
               label="支払方法"
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
-              <MenuItem value="CASH">現金</MenuItem>
-              <MenuItem value="CREDIT_CARD">クレカ</MenuItem>
+              <MenuItem value="CASH">💵 現金</MenuItem>
+              <MenuItem value="CREDIT_CARD">💳 クレカ</MenuItem>
             </Select>
           </FormControl>
           <TextField
             label="説明"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            sx={{ width: 200 }}
+            fullWidth
+            size={isMobile ? 'small' : 'medium'}
           />
           <TextField
             label="メモ"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            sx={{ width: 200 }}
+            fullWidth
+            size={isMobile ? 'small' : 'medium'}
           />
+        </Box>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
           <Button
             type="submit"
             variant="contained"
             color={isPlannedDate ? 'warning' : 'error'}
             startIcon={<Add />}
-            sx={{ height: 56 }}
+            fullWidth={isMobile}
+            sx={{ minWidth: { sm: 140 } }}
           >
             {isPlannedDate ? '予定を追加' : '追加'}
           </Button>

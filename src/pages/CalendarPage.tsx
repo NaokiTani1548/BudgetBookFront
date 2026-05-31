@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Typography, Box } from '@mui/material'
+import { Container, Typography, Box, Paper, useMediaQuery, useTheme } from '@mui/material'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
@@ -15,6 +15,9 @@ import type { Income } from '../types/income'
 
 export default function CalendarPage() {
   const navigate = useNavigate()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [incomes, setIncomes] = useState<Income[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,50 +31,34 @@ export default function CalendarPage() {
         const startOfMonth = currentMonth.startOf('month').format('YYYY-MM-DD')
         const endOfMonth = currentMonth.endOf('month').format('YYYY-MM-DD')
 
-        // 定期支出APIを叩いて未処理分を自動生成
         await recurringExpenseApi.getAll().catch(() => {})
 
-        // 通常データと予定データを両方取得
-        const [
-          actualExpenses,
-          plannedExpenses,
-          actualIncomes,
-          plannedIncomes,
-        ] = await Promise.all([
+        const [actualExpenses, plannedExpenses, actualIncomes, plannedIncomes] = await Promise.all([
           expenseApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
           expenseApi.getPlanned().catch(() => []),
           incomeApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
           incomeApi.getPlanned().catch(() => []),
         ])
 
-        // 予定データを当月でフィルタリング
-        const filteredPlannedExpenses = plannedExpenses.filter((e) => {
-          return e.expenseDate >= startOfMonth && e.expenseDate <= endOfMonth
-        })
+        const filteredPlannedExpenses = plannedExpenses.filter(
+          (e) => e.expenseDate >= startOfMonth && e.expenseDate <= endOfMonth
+        )
+        const filteredPlannedIncomes = plannedIncomes.filter(
+          (i) => i.incomeDate >= startOfMonth && i.incomeDate <= endOfMonth
+        )
 
-        const filteredPlannedIncomes = plannedIncomes.filter((i) => {
-          return i.incomeDate >= startOfMonth && i.incomeDate <= endOfMonth
-        })
-
-        // 重複を除いて結合（IDベースで重複チェック）
         const allExpenses = [...actualExpenses]
         filteredPlannedExpenses.forEach((pe) => {
-          if (!allExpenses.some((e) => e.id === pe.id)) {
-            allExpenses.push(pe)
-          }
+          if (!allExpenses.some((e) => e.id === pe.id)) allExpenses.push(pe)
         })
 
         const allIncomes = [...actualIncomes]
         filteredPlannedIncomes.forEach((pi) => {
-          if (!allIncomes.some((i) => i.id === pi.id)) {
-            allIncomes.push(pi)
-          }
+          if (!allIncomes.some((i) => i.id === pi.id)) allIncomes.push(pi)
         })
 
         setExpenses(allExpenses)
         setIncomes(allIncomes)
-
-        // 残高も更新
         refetchBalance()
       } catch (err) {
         console.error('データの取得に失敗しました', err)
@@ -87,26 +74,99 @@ export default function CalendarPage() {
     navigate(`/day/${date}`)
   }
 
+  const monthlyIncome = incomes.reduce((sum, i) => sum + i.amount, 0)
+  const monthlyExpense = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const monthlyBalance = monthlyIncome - monthlyExpense
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+    }).format(amount)
+  }
+
   if (loading) return <Loading />
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        📅 カレンダー
-      </Typography>
+    <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+      {/* ヘッダー */}
+      <Box sx={{ mb: 2 }}>
+        <Typography
+          variant={isMobile ? 'h5' : 'h4'}
+          component="h1"
+          sx={{ fontWeight: 700, color: 'primary.main' }}
+        >
+          📅 カレンダー
+        </Typography>
+        {!isMobile && (
+          <Typography variant="body2" color="text.secondary">
+            日付をタップして詳細を確認しましょう
+          </Typography>
+        )}
+      </Box>
 
       {/* 現在の総資産 */}
       <BalanceSummary summary={summary} loading={balanceLoading} />
 
-      {/* カレンダーとグラフを横並び */}
+      {/* 月間サマリー */}
+      <Paper
+        sx={{
+          p: { xs: 1.5, sm: 2 },
+          mb: 2,
+          display: 'flex',
+          justifyContent: 'space-around',
+          flexWrap: 'wrap',
+          gap: { xs: 1, sm: 2 },
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFAF5 100%)',
+        }}
+      >
+        <Box sx={{ textAlign: 'center', minWidth: { xs: '30%', sm: 'auto' } }}>
+          <Typography variant="caption" color="text.secondary">
+            📥 収入
+          </Typography>
+          <Typography
+            variant={isMobile ? 'body1' : 'h6'}
+            sx={{ color: 'success.main', fontWeight: 700 }}
+          >
+            +{formatCurrency(monthlyIncome)}
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'center', minWidth: { xs: '30%', sm: 'auto' } }}>
+          <Typography variant="caption" color="text.secondary">
+            📤 支出
+          </Typography>
+          <Typography
+            variant={isMobile ? 'body1' : 'h6'}
+            sx={{ color: 'error.main', fontWeight: 700 }}
+          >
+            -{formatCurrency(monthlyExpense)}
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'center', minWidth: { xs: '30%', sm: 'auto' } }}>
+          <Typography variant="caption" color="text.secondary">
+            📊 収支
+          </Typography>
+          <Typography
+            variant={isMobile ? 'body1' : 'h6'}
+            sx={{
+              color: monthlyBalance >= 0 ? 'primary.main' : 'error.main',
+              fontWeight: 700,
+            }}
+          >
+            {monthlyBalance >= 0 ? '+' : ''}
+            {formatCurrency(monthlyBalance)}
+          </Typography>
+        </Box>
+      </Paper>
+
+      {/* カレンダーとグラフ */}
       <Box
         sx={{
           display: 'flex',
-          gap: 3,
-          flexDirection: { xs: 'column', md: 'row' },
+          gap: { xs: 2, md: 3 },
+          flexDirection: { xs: 'column', lg: 'row' },
         }}
       >
-        {/* カレンダー */}
         <Box sx={{ flex: 2 }}>
           <MonthCalendar
             currentMonth={currentMonth}
@@ -117,11 +177,10 @@ export default function CalendarPage() {
           />
         </Box>
 
-        {/* カテゴリ別支出グラフ */}
         <Box sx={{ flex: 1 }}>
           <ExpenseByCategoryChart
             expenses={expenses}
-            title={`${currentMonth.format('YYYY年M月')}のカテゴリ別支出`}
+            title={`${currentMonth.format('M月')}のカテゴリ別支出`}
           />
         </Box>
       </Box>

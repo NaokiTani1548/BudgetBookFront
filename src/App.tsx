@@ -12,11 +12,12 @@ import {
   List,
   ListItem,
   ListItemButton,
-  ListItemIcon,
   ListItemText,
   Divider,
   Menu,
   MenuItem,
+  Avatar,
+  ListItemIcon,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -24,7 +25,7 @@ import {
   CalendarMonth,
   Category,
   Repeat,
-  AccountCircle,
+  Logout,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
 import theme from './theme'
@@ -39,13 +40,13 @@ import DayDetailPage from './pages/DayDetailPage'
 import CategoryPage from './pages/CategoryPage'
 import RecurringExpensePage from './pages/RecurringExpensePage'
 
-const DRAWER_WIDTH = 240
+const DRAWER_WIDTH = 260
 
 const menuItems = [
-  { path: '/list', label: 'リスト', icon: <ListIcon /> },
-  { path: '/calendar', label: 'カレンダー', icon: <CalendarMonth /> },
-  { path: '/recurring', label: '定期支出', icon: <Repeat /> },
-  { path: '/categories', label: 'カテゴリ', icon: <Category /> },
+  { path: '/list', label: '収支リスト', icon: <ListIcon />, emoji: '📋' },
+  { path: '/calendar', label: 'カレンダー', icon: <CalendarMonth />, emoji: '📅' },
+  { path: '/recurring', label: '定期支出', icon: <Repeat />, emoji: '🔄' },
+  { path: '/categories', label: 'カテゴリ', icon: <Category />, emoji: '🏷️' },
 ]
 
 function Navigation() {
@@ -82,6 +83,7 @@ function Navigation() {
         position="fixed"
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
+          background: 'linear-gradient(135deg, #5D9C59 0%, #7CB87A 100%)',
         }}
       >
         <Toolbar>
@@ -93,30 +95,65 @@ function Navigation() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            💰 BudgetBook
+          <Typography
+            variant="h6"
+            sx={{
+              flexGrow: 1,
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+            }}
+          >
+            家計簿
           </Typography>
 
           {/* ユーザーメニュー */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              {user?.name}
+            <Typography
+              variant="body2"
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                fontWeight: 500,
+              }}
+            >
+              {user?.name}さん
             </Typography>
             <IconButton color="inherit" onClick={handleMenuOpen}>
-              <AccountCircle />
+              <Avatar
+                sx={{
+                  width: 36,
+                  height: 36,
+                  bgcolor: 'secondary.main',
+                  fontSize: '0.9rem',
+                }}
+              >
+                {user?.name?.charAt(0) || '?'}
+              </Avatar>
             </IconButton>
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={handleMenuClose}
+              slotProps={{
+                paper: {
+                  sx: { mt: 1, borderRadius: 3 },
+                },
+              }}
             >
-              <MenuItem disabled>
-                <Typography variant="body2" color="text.secondary">
+              <Box sx={{ px: 2, py: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {user?.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
                   {user?.email}
                 </Typography>
-              </MenuItem>
+              </Box>
               <Divider />
-              <MenuItem onClick={handleLogout}>ログアウト</MenuItem>
+              <MenuItem onClick={handleLogout} sx={{ py: 1.5 }}>
+                <ListItemIcon>
+                  <Logout fontSize="small" />
+                </ListItemIcon>
+                ログアウト
+              </MenuItem>
             </Menu>
           </Box>
         </Toolbar>
@@ -128,7 +165,7 @@ function Navigation() {
         open={drawerOpen}
         onClose={handleDrawerToggle}
         ModalProps={{
-          keepMounted: true, // モバイルでのパフォーマンス向上
+          keepMounted: true,
         }}
         sx={{
           '& .MuiDrawer-paper': {
@@ -137,40 +174,65 @@ function Navigation() {
           },
         }}
       >
-        <Toolbar /> {/* AppBarの高さ分のスペーサー */}
-        <Box sx={{ overflow: 'auto' }}>
-          <List>
-            {menuItems.map((item) => (
-              <ListItem key={item.path} disablePadding>
-                <ListItemButton
-                  component={RouterLink}
-                  to={item.path}
-                  selected={location.pathname === item.path}
-                  onClick={handleDrawerToggle}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'primary.light',
-                      color: 'primary.contrastText',
-                      '& .MuiListItemIcon-root': {
-                        color: 'primary.contrastText',
+        <Toolbar />
+        <Box sx={{ overflow: 'auto', py: 2 }}>
+          {/* ウェルカムメッセージ */}
+          <Box sx={{ px: 3, pb: 2, mb: 2, borderBottom: '1px dashed #E0D5C8' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+              ページ一覧
+            </Typography>
+          </Box>
+
+          <List sx={{ px: 1 }}>
+            {menuItems.map((item) => {
+              const isSelected = location.pathname === item.path
+              return (
+                <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    component={RouterLink}
+                    to={item.path}
+                    selected={isSelected}
+                    onClick={handleDrawerToggle}
+                    sx={{
+                      borderRadius: 3,
+                      mx: 1,
+                      '&.Mui-selected': {
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        '& .MuiListItemIcon-root': {
+                          color: 'white',
+                        },
+                        '&:hover': {
+                          backgroundColor: 'primary.dark',
+                        },
                       },
                       '&:hover': {
-                        backgroundColor: 'primary.main',
+                        backgroundColor: 'rgba(93, 156, 89, 0.1)',
                       },
-                    },
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      color: location.pathname === item.path ? 'inherit' : 'text.secondary',
                     }}
                   >
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
-              </ListItem>
-            ))}
+                    <Box
+                      sx={{
+                        fontSize: '1.3rem',
+                        mr: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {item.emoji}
+                    </Box>
+                    <ListItemText
+                      primary={item.label}
+                      slotProps={{
+                        primary: {
+                          sx: { fontWeight: isSelected ? 600 : 500 },
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              )
+            })}
           </List>
         </Box>
       </Drawer>
@@ -182,22 +244,20 @@ function AppContent() {
   const { isAuthenticated } = useAuth()
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: 'background.default' }}>
       <Navigation />
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          pt: isAuthenticated ? 8 : 0, // AppBarの高さ分のパディング
+          pt: isAuthenticated ? 10 : 0,
+          pb: 4,
           minHeight: '100vh',
         }}
       >
         <Routes>
-          {/* 認証不要なルート */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
-
-          {/* 認証必要なルート */}
           <Route
             path="/"
             element={
@@ -246,8 +306,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-
-          {/* 404 */}
           <Route path="*" element={<Navigate to="/list" replace />} />
         </Routes>
       </Box>
