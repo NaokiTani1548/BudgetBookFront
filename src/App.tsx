@@ -95,16 +95,28 @@ function Navigation() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography
-            variant="h6"
-            sx={{
-              flexGrow: 1,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-            }}
-          >
-            家計簿
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
+            <Box
+              component="img"
+              src="/logo.png"
+              alt="KAKEKAKEI"
+              sx={{
+                height: 36,
+                width: 'auto',
+                filter: 'brightness(0) invert(1)', // 白色化
+              }}
+            />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                display: { xs: 'none', sm: 'block' },
+              }}
+            >
+              KAKEKAKEI
+            </Typography>
+          </Box>
 
           {/* ユーザーメニュー */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

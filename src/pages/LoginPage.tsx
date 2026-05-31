@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Paper, Typography, Button, Box, CircularProgress } from '@mui/material'
+import { Box, Typography, Button, CircularProgress } from '@mui/material'
 import { Google } from '@mui/icons-material'
 import { authApi } from '../api/authApi'
 import { useAuth } from '../hooks/useAuth'
@@ -37,101 +37,203 @@ export default function LoginPage() {
       sx={{
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 100%)',
-        p: 2,
+        flexDirection: { xs: 'column', md: 'row' },
       }}
     >
-      <Container maxWidth="sm">
-        <Paper
+    {/* 左側：ブランドエリア */}
+    <Box
+    sx={{
+        flex: { xs: 'none', md: 1 },
+        minHeight: { xs: '300px', md: '100vh' },
+        background: 'linear-gradient(135deg, #fef9f3 0%, #f5e6d3 50%, #ffe8d6 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        p: { xs: 2, md: 4 },
+        position: 'relative',
+    }}
+    >
+    {/* フルロゴ */}
+    <Box
+        component="img"
+        src="/logo-full.png"
+        alt="KAKEKAKEI"
+        sx={{
+        width: { xs: '85%', sm: '80%', md: '85%' },
+        maxWidth: { xs: '350px', sm: '450px', md: '550px' },
+        height: 'auto',
+        filter: 'drop-shadow(0 8px 32px rgba(232, 106, 51, 0.3))',
+        }}
+    />
+
+    {/* フッター */}
+    <Box
+        sx={{
+        position: 'absolute',
+        bottom: 24,
+        }}
+    >
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+        © 2024 KAKEKAKEI
+        </Typography>
+    </Box>
+    </Box>
+
+      {/* 右側：ログインフォーム */}
+      <Box
+        sx={{
+          flex: { xs: 1, md: 1 },
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          p: { xs: 4, md: 8 },
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        <Box
           sx={{
-            p: { xs: 4, sm: 6 },
-            textAlign: 'center',
-            borderRadius: 4,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            width: '100%',
+            maxWidth: 400,
           }}
         >
-          {/* ロゴ・タイトル */}
-          <Box sx={{ mb: 4 }}>
-            <Typography
-              variant="h3"
-              sx={{
-                fontSize: { xs: '2.5rem', sm: '3rem' },
-                mb: 1,
-              }}
-            >
-              🏠
-            </Typography>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                color: 'primary.main',
-                mb: 1,
-              }}
-            >
-                家計簿
-            </Typography>
-          </Box>
-
-          {/* イラスト風の装飾 */}
+          {/* モバイルではここにもロゴを表示（任意） */}
           <Box
             sx={{
-              mb: 4,
-              p: 3,
-              borderRadius: 3,
-              backgroundColor: 'rgba(93, 156, 89, 0.08)',
-              border: '2px dashed',
-              borderColor: 'primary.light',
+              display: { xs: 'flex', md: 'none' },
+              justifyContent: 'center',
+              mb: 3,
             }}
           >
-            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.8 }}>
-              📊 収支をかんたん記録<br />
-              📅 カレンダーで見える化<br />
-              🔄 定期支出も自動管理<br />
-              📈 カテゴリ別で分析
-            </Typography>
+            <Box
+              component="img"
+              src="/logo.png"
+              alt="KAKEKAKEI"
+              sx={{ width: 60, height: 'auto' }}
+            />
           </Box>
 
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              mb: 1,
+              color: '#333',
+            }}
+          >
+            ログイン
+          </Typography>
+
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mb: 4,
+            }}
+          >
+            Googleアカウントでログインしてください。
+          </Typography>
+
           {error && (
-            <Typography color="error" sx={{ mb: 2 }}>
-              {error}
-            </Typography>
+            <Box
+              sx={{
+                mb: 3,
+                p: 2,
+                borderRadius: 1,
+                backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                border: '1px solid',
+                borderColor: 'error.main',
+              }}
+            >
+              <Typography color="error" variant="body2">
+                {error}
+              </Typography>
+            </Box>
           )}
 
+          {/* Googleログインボタン */}
           <Button
+            fullWidth
             variant="contained"
             size="large"
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Google />}
             onClick={handleGoogleLogin}
             disabled={loading}
             sx={{
-              backgroundColor: '#4285F4',
-              '&:hover': { backgroundColor: '#357ABD' },
-              px: 4,
-              py: 1.5,
+              backgroundColor: '#111111',
+              color: '#FFFFFF',
+              py: 1.8,
               fontSize: '1rem',
-              borderRadius: 3,
+              fontWeight: 600,
+              borderRadius: '50px',
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#333333',
+                boxShadow: 'none',
+              },
+              '&:disabled': {
+                backgroundColor: '#666666',
+                color: '#CCCCCC',
+              },
             }}
           >
             {loading ? 'リダイレクト中...' : 'Googleでログイン'}
           </Button>
 
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="caption" color="text.secondary">
-              ログインすることで、利用規約とプライバシーポリシーに同意したものとみなされます。
+          {/* 区切り線 */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              my: 4,
+            }}
+          >
+            <Box sx={{ flex: 1, height: '1px', backgroundColor: '#E0E0E0' }} />
+            <Typography variant="caption" sx={{ px: 2, color: 'text.secondary' }}>
+              はじめての方へ
             </Typography>
+            <Box sx={{ flex: 1, height: '1px', backgroundColor: '#E0E0E0' }} />
           </Box>
-        </Paper>
 
-        {/* フッター */}
-        <Box sx={{ textAlign: 'center', mt: 3 }}>
-          <Typography variant="caption" color="text.secondary">
-            Made with 💚 for your family
+          {/* 利用規約 */}
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              textAlign: 'center',
+              mt: 4,
+              color: 'text.secondary',
+              lineHeight: 1.6,
+            }}
+          >
+            ログインすることで、
+            <Box
+              component="span"
+              sx={{
+                color: '#E86A33',
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              利用規約
+            </Box>
+            と
+            <Box
+              component="span"
+              sx={{
+                color: '#E86A33',
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              プライバシーポリシー
+            </Box>
+            に同意したものとみなされます。
           </Typography>
         </Box>
-      </Container>
+      </Box>
     </Box>
   )
 }
