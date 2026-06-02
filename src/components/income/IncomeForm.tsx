@@ -28,7 +28,7 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
 
   const [amount, setAmount] = useState('')
   const [incomeDate, setIncomeDate] = useState(initialDate || dayjs().format('YYYY-MM-DD'))
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState('')
   const [description, setDescription] = useState('')
   const [memo, setMemo] = useState('')
 
@@ -60,7 +60,9 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Typography variant="h6">💰 収入を追加</Typography>
+        <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+          💰 収入を追加
+        </Typography>
         {isPlannedDate && (
           <Typography variant="body2" sx={{ color: 'warning.main' }}>
             （予定）
@@ -71,8 +73,8 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(auto-fit, minmax(140px, 1fr))' },
-            gap: 2,
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', md: 'repeat(5, 1fr)' },
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
           <TextField
@@ -82,7 +84,7 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
             onChange={(e) => setAmount(e.target.value)}
             required
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
           />
           <TextField
             label="日付"
@@ -91,7 +93,7 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
             onChange={(e) => setIncomeDate(e.target.value)}
             required
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
           />
           <CategorySelectWithCreate
             categories={categories}
@@ -100,21 +102,23 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
             onCreateCategory={onCreateCategory}
             type="INCOME"
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
           />
           <TextField
             label="説明"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
+            sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }}
           />
           <TextField
             label="メモ"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
+            sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }}
           />
         </Box>
         <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
@@ -124,9 +128,13 @@ export default function IncomeForm({ categories, onSubmit, onCreateCategory, ini
             color={isPlannedDate ? 'warning' : 'success'}
             startIcon={<Add />}
             fullWidth={isMobile}
-            sx={{ minWidth: { sm: 140 } }}
+            sx={{
+              minWidth: { sm: 120 },
+              whiteSpace: 'nowrap',
+              px: { xs: 2, sm: 3 },
+            }}
           >
-            {isPlannedDate ? '予定を追加' : '追加'}
+            {isPlannedDate ? '予定追加' : '追加'}
           </Button>
         </Box>
       </Box>

@@ -1,5 +1,14 @@
 import axios from 'axios'
 import type { GoogleAuthUrlResponse, AuthResponse } from '../types/auth'
+import { config } from '../config'
+
+// モック用のダミーユーザー
+const MOCK_USER = {
+  token: 'mock-jwt-token-12345',
+  userId: 'mock-user-001',
+  email: 'mock@example.com',
+  name: 'モックユーザー',
+}
 
 const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_URL || ''}/api`,
@@ -11,6 +20,12 @@ const api = axios.create({
 export const authApi = {
   // Google認証URLを取得
   getGoogleAuthUrl: async (): Promise<GoogleAuthUrlResponse> => {
+    if (config.isMockMode) {
+        return {
+        url: '/auth/callback?mock=true',
+        state: 'mock-state',
+        }
+    }
     const response = await api.get('/auth/google/url')
     return response.data
   },
@@ -21,5 +36,8 @@ export const authApi = {
       params: { code, state },
     })
     return response.data
+  },
+  mockLogin: () => {
+    return MOCK_USER
   },
 }

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Container, Paper, Typography, CircularProgress } from '@mui/material'
 import { useAuth } from '../hooks/useAuth'
+import { config } from '../config'
+import { authApi } from '../api/authApi'
 
 export default function AuthCallbackPage() {
   const [searchParams] = useSearchParams()
@@ -16,6 +18,17 @@ export default function AuthCallbackPage() {
       const userId = searchParams.get('userId')
       const email = searchParams.get('email')
       const name = searchParams.get('name')
+      if (config.isMockMode || searchParams.get('mock') === 'true') {
+        const mockUser = authApi.mockLogin()
+        login(mockUser.token, {
+          userId: mockUser.userId,
+          email: mockUser.email,
+          name: mockUser.name,
+        })
+        navigate('/calendar', { replace: true })
+        return
+      }
+
 
       if (!token || !userId || !email || !name) {
         setError('認証情報が不完全です')
@@ -30,7 +43,7 @@ export default function AuthCallbackPage() {
       })
 
       // メインページにリダイレクト
-      navigate('/list', { replace: true })
+      navigate('/calendar', { replace: true })
     }
 
     handleCallback()

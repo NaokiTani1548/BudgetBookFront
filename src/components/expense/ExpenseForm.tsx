@@ -32,7 +32,7 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
 
   const [amount, setAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState(initialDate || dayjs().format('YYYY-MM-DD'))
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState('')
   const [description, setDescription] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [memo, setMemo] = useState('')
@@ -66,7 +66,9 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Typography variant="h6">💸 支出を追加</Typography>
+        <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+          💸 支出を追加
+        </Typography>
         {isPlannedDate && (
           <Typography variant="body2" sx={{ color: 'warning.main' }}>
             （予定）
@@ -77,8 +79,8 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(auto-fit, minmax(140px, 1fr))' },
-            gap: 2,
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', md: 'repeat(6, 1fr)' },
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
           <TextField
@@ -88,7 +90,7 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             onChange={(e) => setAmount(e.target.value)}
             required
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
           />
           <TextField
             label="日付"
@@ -97,7 +99,7 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             onChange={(e) => setExpenseDate(e.target.value)}
             required
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
           />
           <CategorySelectWithCreate
             categories={categories}
@@ -106,17 +108,17 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             onCreateCategory={onCreateCategory}
             type="EXPENSE"
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
           />
-          <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
+          <FormControl fullWidth size="small">
             <InputLabel>支払方法</InputLabel>
             <Select
               value={paymentMethod}
               label="支払方法"
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
-              <MenuItem value="CASH">💵 現金</MenuItem>
-              <MenuItem value="CREDIT_CARD">💳 クレカ</MenuItem>
+              <MenuItem value="CASH">現金</MenuItem>
+              <MenuItem value="CREDIT_CARD">クレカ</MenuItem>
             </Select>
           </FormControl>
           <TextField
@@ -124,14 +126,16 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
+            sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }}
           />
           <TextField
             label="メモ"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             fullWidth
-            size={isMobile ? 'small' : 'medium'}
+            size="small"
+            sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }}
           />
         </Box>
         <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
@@ -141,9 +145,13 @@ export default function ExpenseForm({ categories, onSubmit, onCreateCategory, in
             color={isPlannedDate ? 'warning' : 'error'}
             startIcon={<Add />}
             fullWidth={isMobile}
-            sx={{ minWidth: { sm: 140 } }}
+            sx={{
+              minWidth: { sm: 120 },
+              whiteSpace: 'nowrap',
+              px: { xs: 2, sm: 3 },
+            }}
           >
-            {isPlannedDate ? '予定を追加' : '追加'}
+            {isPlannedDate ? '予定追加' : '追加'}
           </Button>
         </Box>
       </Box>

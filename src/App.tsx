@@ -96,21 +96,21 @@ function Navigation() {
             <MenuIcon />
           </IconButton>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
-            <Box
+            {/* <Box
               component="img"
               src="/logo.png"
               alt="KAKEKAKEI"
               sx={{
-                height: 36,
+                height: 32,
                 width: 'auto',
-                filter: 'brightness(0) invert(1)', // 白色化
               }}
-            />
+            /> */}
             <Typography
               variant="h6"
               sx={{
                 fontWeight: 700,
-                letterSpacing: '0.1em',
+                letterSpacing: '0.05em',
+                color: '#FFFFFF',
                 display: { xs: 'none', sm: 'block' },
               }}
             >
@@ -274,7 +274,7 @@ function AppContent() {
             path="/"
             element={
               <ProtectedRoute>
-                <Navigate to="/list" replace />
+                <Navigate to="/calendar" replace />
               </ProtectedRoute>
             }
           />
@@ -318,7 +318,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/list" replace />} />
+          <Route path="*" element={<Navigate to="/calendar" replace />} />
         </Routes>
       </Box>
     </Box>

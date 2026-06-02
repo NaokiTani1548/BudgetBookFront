@@ -4,6 +4,7 @@ import { Box, Typography, Button, CircularProgress } from '@mui/material'
 import { Google } from '@mui/icons-material'
 import { authApi } from '../api/authApi'
 import { useAuth } from '../hooks/useAuth'
+import { config } from '../config'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
@@ -13,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/list', { replace: true })
+      navigate('/calendar', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -21,6 +22,10 @@ export default function LoginPage() {
     try {
       setLoading(true)
       setError(null)
+      if (config.isMockMode) {
+        navigate('/auth/callback?mock=true')
+        return
+      }
       const { url, state } = await authApi.getGoogleAuthUrl()
       sessionStorage.setItem('oauth_state', state)
       window.location.href = url
@@ -54,6 +59,25 @@ export default function LoginPage() {
         position: 'relative',
     }}
     >
+        {/* モックモード表示 */}
+        {config.isMockMode && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              backgroundColor: '#E86A33',
+              color: 'white',
+              px: 2,
+              py: 0.5,
+              borderRadius: 2,
+              fontSize: '0.75rem',
+              fontWeight: 600,
+            }}
+          >
+            MOCK MODE
+          </Box>
+        )}
     {/* フルロゴ */}
     <Box
         component="img"
@@ -132,7 +156,9 @@ export default function LoginPage() {
               mb: 4,
             }}
           >
-            Googleアカウントでログインしてください。
+            {config.isMockMode
+              ? 'モックモードで動作中です。ボタンを押すとログインします。'
+              : 'Googleアカウントでログインしてください。'}
           </Typography>
 
           {error && (
