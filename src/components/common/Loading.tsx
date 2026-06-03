@@ -19,16 +19,15 @@ export default function Loading() {
           sx={{ color: 'primary.main' }}
         />
         <Box
+          component="img"
+          src="/logo.png"
+          alt="Loading"
           sx={{
             position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '1.5rem',
+            width: 36,
+            height: 'auto',
           }}
-        >
-          🏠
-        </Box>
+        />
       </Box>
       <Typography variant="body2" color="text.secondary">
         読み込み中...

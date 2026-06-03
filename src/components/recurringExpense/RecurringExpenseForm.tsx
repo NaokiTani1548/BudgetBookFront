@@ -1,77 +1,81 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Box,
   TextField,
   Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Box,
+  Paper,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
+import { Add } from '@mui/icons-material'
 import dayjs from 'dayjs'
-import type { RecurringExpense, CreateRecurringExpenseRequest, UpdateRecurringExpenseRequest } from '../../types/recurringExpense'
-import type { Category } from '../../types/category'
+import type { CreateRecurringExpenseRequest } from '../../types/recurringExpense'
+import type { Category, CreateCategoryRequest } from '../../types/category'
+import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
 
 interface Props {
-  open: boolean
-  recurringExpense?: RecurringExpense | null
   categories: Category[]
-  onClose: () => void
-  onSubmit: (data: CreateRecurringExpenseRequest | UpdateRecurringExpenseRequest) => void
+  onSubmit: (data: CreateRecurringExpenseRequest) => void
+  onCreateCategory: (data: CreateCategoryRequest) => Promise<Category>
 }
 
-export default function RecurringExpenseForm({
-  open,
-  recurringExpense,
-  categories,
-  onClose,
-  onSubmit,
-}: Props) {
-  const [amount, setAmount] = useState(recurringExpense?.amount.toString() || '')
-  const [billingDay, setBillingDay] = useState(recurringExpense?.billingDay.toString() || '1')
-  const [startDate, setStartDate] = useState(
-    recurringExpense?.startDate || dayjs().format('YYYY-MM-DD')
-  )
-  const [endDate, setEndDate] = useState(recurringExpense?.endDate || '')
-  const [categoryId, setCategoryId] = useState(recurringExpense?.categoryId || '')
-  const [description, setDescription] = useState(recurringExpense?.description || '')
-  const [paymentMethod, setPaymentMethod] = useState(recurringExpense?.paymentMethod || 'CREDIT_CARD')
-  const [memo, setMemo] = useState(recurringExpense?.memo || '')
+export default function RecurringExpenseForm({ categories, onSubmit, onCreateCategory }: Props) {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  const handleSubmit = () => {
-    if (!amount || !billingDay) return
+  const [amount, setAmount] = useState('')
+  const [billingDay, setBillingDay] = useState('1')
+  const [startDate, setStartDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [endDate, setEndDate] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [description, setDescription] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('CASH')
+  const [memo, setMemo] = useState('')
 
-    const data: CreateRecurringExpenseRequest | UpdateRecurringExpenseRequest = {
+  const selectedCategoryId = useMemo(() => {
+    if (categoryId) return categoryId
+    if (categories.length > 0) return categories[0].id
+    return ''
+  }, [categoryId, categories])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!amount || !selectedCategoryId) return
+
+    onSubmit({
       amount: Number(amount),
       billingDay: Number(billingDay),
       startDate,
       endDate: endDate || undefined,
-      categoryId: categoryId || undefined,
+      categoryId: selectedCategoryId,
       description: description || undefined,
       paymentMethod,
       memo: memo || undefined,
-    }
+    })
 
-    if (recurringExpense) {
-      (data as UpdateRecurringExpenseRequest).isActive = recurringExpense.isActive
-    }
-
-    onSubmit(data)
+    setAmount('')
+    setDescription('')
+    setMemo('')
   }
 
-  const billingDays = Array.from({ length: 31 }, (_, i) => i + 1)
-
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {recurringExpense ? '定期支出を編集' : '定期支出を追加'}
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+        🔄 定期支出を追加
+      </Typography>
+      <Box component="form" onSubmit={handleSubmit}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+            gap: { xs: 1.5, sm: 2 },
+          }}
+        >
           <TextField
             label="金額"
             type="number"
@@ -79,17 +83,18 @@ export default function RecurringExpenseForm({
             onChange={(e) => setAmount(e.target.value)}
             required
             fullWidth
+            size="small"
           />
-          <FormControl fullWidth>
-            <InputLabel>引き落とし日</InputLabel>
+          <FormControl fullWidth size="small">
+            <InputLabel>請求日</InputLabel>
             <Select
               value={billingDay}
-              label="引き落とし日"
+              label="請求日"
               onChange={(e) => setBillingDay(e.target.value)}
             >
-              {billingDays.map((day) => (
-                <MenuItem key={day} value={day.toString()}>
-                  毎月 {day} 日
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                <MenuItem key={day} value={day}>
+                  {day}日
                 </MenuItem>
               ))}
             </Select>
@@ -101,44 +106,27 @@ export default function RecurringExpenseForm({
             onChange={(e) => setStartDate(e.target.value)}
             required
             fullWidth
-            slotProps={{
-              inputLabel: { shrink: true },
-            }}
+            size="small"
           />
           <TextField
-            label="終了日（任意）"
+            label="終了日"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             fullWidth
-            slotProps={{
-              inputLabel: { shrink: true },
-            }}
-            helperText="空欄の場合は無期限"
+            size="small"
+            helperText={isMobile ? '' : '空欄で無期限'}
           />
-          <FormControl fullWidth>
-            <InputLabel>カテゴリ</InputLabel>
-            <Select
-              value={categoryId}
-              label="カテゴリ"
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              <MenuItem value="">未分類</MenuItem>
-              {categories.map((cat) => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="説明"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+          <CategorySelectWithCreate
+            categories={categories}
+            value={selectedCategoryId}
+            onChange={setCategoryId}
+            onCreateCategory={onCreateCategory}
+            type="EXPENSE"
             fullWidth
-            placeholder="例: Netflix, 家賃, スポーツジム"
+            size="small"
           />
-          <FormControl fullWidth>
+          <FormControl fullWidth size="small">
             <InputLabel>支払方法</InputLabel>
             <Select
               value={paymentMethod}
@@ -150,21 +138,34 @@ export default function RecurringExpenseForm({
             </Select>
           </FormControl>
           <TextField
+            label="説明"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ gridColumn: { xs: '1 / -1', md: 'auto' } }}
+          />
+          <TextField
             label="メモ"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             fullWidth
-            multiline
-            rows={2}
+            size="small"
+            sx={{ gridColumn: { xs: '1 / -1', md: 'auto' } }}
           />
         </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>キャンセル</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!amount || !billingDay}>
-          {recurringExpense ? '更新' : '登録'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
+          <Button
+            type="submit"
+            variant="contained"
+            startIcon={<Add />}
+            fullWidth={isMobile}
+            sx={{ minWidth: { sm: 120 }, whiteSpace: 'nowrap' }}
+          >
+            追加
+          </Button>
+        </Box>
+      </Box>
+    </Paper>
   )
 }

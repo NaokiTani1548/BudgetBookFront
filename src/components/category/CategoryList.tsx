@@ -1,13 +1,18 @@
 import {
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
+  IconButton,
   Typography,
   Box,
+  Card,
+  CardContent,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import { Edit, Delete } from '@mui/icons-material'
 import type { Category } from '../../types/category'
@@ -19,52 +24,119 @@ interface Props {
 }
 
 export default function CategoryList({ categories, onEdit, onDelete }: Props) {
-  return (
-    <Paper sx={{ p: 2 }}>
-      {categories.length === 0 ? (
-        <Typography color="text.secondary" align="center">
-          カテゴリがありません
-        </Typography>
-      ) : (
-        <List>
-          {categories.map((category) => (
-            <ListItem key={category.id} divider>
-              <Box
-                sx={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: '50%',
-                  backgroundColor: category.color || '#ccc',
-                  mr: 2,
-                }}
-              />
-              <ListItemText
-                primary={category.name}
-                secondary={
-                  <Chip
-                    label={category.type === 'EXPENSE' ? '支出' : '収入'}
-                    size="small"
-                    color={category.type === 'EXPENSE' ? 'error' : 'success'}
-                    sx={{ mt: 0.5 }}
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
+  // モバイル用カード表示
+  if (isMobile) {
+    if (categories.length === 0) {
+      return (
+        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+          <Typography color="text.secondary">😢 カテゴリがありません</Typography>
+        </Paper>
+      )
+    }
+
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {categories.map((category) => (
+          <Card
+            key={category.id}
+            sx={{
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: 'none',
+            }}
+          >
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  {/* カラーインジケーター */}
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      backgroundColor: category.color || '#E86A33',
+                      flexShrink: 0,
+                    }}
                   />
-                }
-              />
-              <ListItemSecondaryAction>
-                {!category.isDefault && (
-                  <>
-                    <IconButton edge="end" onClick={() => onEdit(category)} sx={{ mr: 1 }}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton edge="end" onClick={() => onDelete(category)} color="error">
-                      <Delete />
-                    </IconButton>
-                  </>
-                )}
-              </ListItemSecondaryAction>
-            </ListItem>
-          ))}
-        </List>
-      )}
-    </Paper>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {category.name}
+                  </Typography>
+                </Box>
+                <Box>
+                  <IconButton size="small" onClick={() => onEdit(category)} sx={{ color: 'primary.main' }}>
+                    <Edit fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => onDelete(category)} sx={{ color: 'error.main' }}>
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+    )
+  }
+
+  // デスクトップ用テーブル表示
+  const headerCellStyle = {
+    backgroundColor: 'primary.main',
+    color: 'white',
+    fontWeight: 700,
+    fontSize: '0.875rem',
+  }
+
+  return (
+    <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={headerCellStyle}>カラー</TableCell>
+            <TableCell sx={headerCellStyle}>カテゴリ名</TableCell>
+            <TableCell sx={headerCellStyle} align="center">操作</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {categories.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={3} align="center" sx={{ py: 6 }}>
+                <Typography color="text.secondary">😢 カテゴリがありません</Typography>
+              </TableCell>
+            </TableRow>
+          ) : (
+            categories.map((category, index) => (
+              <TableRow
+                key={category.id}
+                sx={{ backgroundColor: index % 2 === 0 ? 'transparent' : 'rgba(232, 106, 51, 0.03)' }}
+              >
+                <TableCell>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      backgroundColor: category.color || '#E86A33',
+                    }}
+                  />
+                </TableCell>
+                <TableCell>{category.name}</TableCell>
+                <TableCell align="center">
+                  <IconButton size="small" onClick={() => onEdit(category)} sx={{ color: 'primary.main' }}>
+                    <Edit fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => onDelete(category)} sx={{ color: 'error.main' }}>
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
 }

@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { Container, Typography, Tabs, Tab } from '@mui/material'
+import {
+  Container,
+  Typography,
+  Tabs,
+  Tab,
+  Box,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material'
 import { useExpenses } from '../hooks/useExpenses'
 import { useIncomes } from '../hooks/useIncomes'
 import { useCategories } from '../hooks/useCategories'
@@ -19,16 +27,20 @@ import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../typ
 import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
 
 export default function ListPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
   const { expenses, loading: expenseLoading, createExpense, updateExpense, deleteExpense } = useExpenses()
   const { incomes, loading: incomeLoading, createIncome, updateIncome, deleteIncome } = useIncomes()
-  const { expenseCategories, incomeCategories, createCategory } = useCategories()
-  const { notification, showSuccess, showError, clearNotification } = useNotification()
+  const { categories: expenseCategories, createCategory: createExpenseCategory } = useCategories('EXPENSE')
+  const { categories: incomeCategories, createCategory: createIncomeCategory } = useCategories('INCOME')
+  const { notification, showSuccess, showError, hideNotification } = useNotification()
   const { summary, loading: balanceLoading, refetch: refetchBalance } = useCurrentBalance()
 
   const [tabIndex, setTabIndex] = useState(0)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'expense' | 'income'; id: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'expense' | 'income'; id: string; description: string } | null>(null)
 
   const handleCreateExpense = async (data: CreateExpenseRequest) => {
     try {
@@ -88,20 +100,57 @@ export default function ListPage() {
     }
   }
 
+  const handleDeleteExpense = (id: string) => {
+    const target = expenses.find((e) => e.id === id)
+    if (target) {
+      setDeleteTarget({ type: 'expense', id, description: target.description || '' })
+    }
+  }
+
+  const handleDeleteIncome = (id: string) => {
+    const target = incomes.find((i) => i.id === id)
+    if (target) {
+      setDeleteTarget({ type: 'income', id, description: target.description || '' })
+    }
+  }
+
   if (expenseLoading || incomeLoading) return <Loading />
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        💰 収支一覧
-      </Typography>
+    <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2, md: 3 }, py: { xs: 2, sm: 4 } }}>
+      {/* ヘッダー */}
+      <Box sx={{ mb: 2 }}>
+        <Typography
+          variant={isMobile ? 'h5' : 'h4'}
+          component="h1"
+          sx={{ fontWeight: 700, color: 'primary.main' }}
+        >
+          📋 収支一覧
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          収入と支出を管理します
+        </Typography>
+      </Box>
 
       {/* 現在の総資産 */}
       <BalanceSummary summary={summary} loading={balanceLoading} />
 
-      <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 3 }}>
-        <Tab label={`支出 (${expenses.length})`} />
-        <Tab label={`収入 (${incomes.length})`} />
+      {/* タブ */}
+      <Tabs
+        value={tabIndex}
+        onChange={(_, v) => setTabIndex(v)}
+        sx={{
+          mb: 3,
+          '& .MuiTab-root': {
+            minWidth: { xs: 0, sm: 120 },
+            flex: { xs: 1, sm: 'none' },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            px: { xs: 1, sm: 3 },
+          },
+        }}
+      >
+        <Tab label={`💸 支出 (${expenses.length})`} />
+        <Tab label={`💰 収入 (${incomes.length})`} />
       </Tabs>
 
       {/* 支出タブ */}
@@ -110,12 +159,12 @@ export default function ListPage() {
           <ExpenseForm
             categories={expenseCategories}
             onSubmit={handleCreateExpense}
-            onCreateCategory={createCategory}
+            onCreateCategory={createExpenseCategory}
           />
           <ExpenseList
             expenses={expenses}
             onEdit={setEditingExpense}
-            onDelete={(id) => setDeleteTarget({ type: 'expense', id })}
+            onDelete={handleDeleteExpense}
           />
         </>
       )}
@@ -126,50 +175,52 @@ export default function ListPage() {
           <IncomeForm
             categories={incomeCategories}
             onSubmit={handleCreateIncome}
-            onCreateCategory={createCategory}
+            onCreateCategory={createIncomeCategory}
           />
           <IncomeList
             incomes={incomes}
             onEdit={setEditingIncome}
-            onDelete={(id) => setDeleteTarget({ type: 'income', id })}
+            onDelete={handleDeleteIncome}
           />
         </>
       )}
 
+      {/* 支出編集ダイアログ */}
       <ExpenseEditDialog
         open={!!editingExpense}
         expense={editingExpense}
         categories={expenseCategories}
         onClose={() => setEditingExpense(null)}
         onSubmit={handleUpdateExpense}
-        onCreateCategory={createCategory}
+        onCreateCategory={createExpenseCategory}
       />
 
+      {/* 収入編集ダイアログ */}
       <IncomeEditDialog
         open={!!editingIncome}
         income={editingIncome}
         categories={incomeCategories}
         onClose={() => setEditingIncome(null)}
         onSubmit={handleUpdateIncome}
-        onCreateCategory={createCategory}
+        onCreateCategory={createIncomeCategory}
       />
 
+      {/* 削除確認ダイアログ */}
       <ConfirmDialog
         open={!!deleteTarget}
         title={`${deleteTarget?.type === 'expense' ? '支出' : '収入'}の削除`}
-        message={`この${deleteTarget?.type === 'expense' ? '支出' : '収入'}を削除しますか？`}
+        message={`「${deleteTarget?.description || ''}」を削除しますか？`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
 
-      {notification && (
-        <Notification
-          open={true}
-          message={notification.message}
-          severity={notification.severity}
-          onClose={clearNotification}
-        />
-      )}
+      {/* 通知 */}
+      <Notification
+        open={notification.open}
+        message={notification.message}
+        severity={notification.severity}
+        onClose={hideNotification}
+      />
     </Container>
   )
 }

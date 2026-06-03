@@ -1,193 +1,130 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Container, Typography, Button, Box, Paper, Tabs, Tab, Divider } from '@mui/material'
-import { ArrowBack, Add, AccountBalance } from '@mui/icons-material'
+import {
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Button,
+  Tabs,
+  Tab,
+  IconButton,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material'
+import { ArrowBack, ChevronLeft, ChevronRight } from '@mui/icons-material'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
 import { summaryApi } from '../api/summaryApi'
-import { recurringExpenseApi } from '../api/recurringExpenseApi'
 import { useCategories } from '../hooks/useCategories'
 import { useNotification } from '../hooks/useNotification'
-import ExpenseList from '../components/expense/ExpenseList'
-import ExpenseEditDialog from '../components/expense/ExpenseEditDialog'
 import ExpenseForm from '../components/expense/ExpenseForm'
-import IncomeList from '../components/income/IncomeList'
-import IncomeEditDialog from '../components/income/IncomeEditDialog'
+import ExpenseList from '../components/expense/ExpenseList'
 import IncomeForm from '../components/income/IncomeForm'
-import Notification from '../components/common/Notification'
+import IncomeList from '../components/income/IncomeList'
 import Loading from '../components/common/Loading'
+import Notification from '../components/common/Notification'
 import ConfirmDialog from '../components/common/ConfirmDialog'
-import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
-import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
+import type { Expense, CreateExpenseRequest } from '../types/expense'
+import type { Income, CreateIncomeRequest } from '../types/income'
 import type { ForecastSummary } from '../types/summary'
-import { isPlanned } from '../utils/dateUtils'
 
 export default function DayDetailPage() {
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
-  const { expenseCategories, incomeCategories, createCategory } = useCategories()
-  const { notification, showSuccess, showError, clearNotification } = useNotification()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [incomes, setIncomes] = useState<Income[]>([])
   const [summary, setSummary] = useState<ForecastSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-  const [editingIncome, setEditingIncome] = useState<Income | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'expense' | 'income'; id: string } | null>(null)
-  const [showAddForm, setShowAddForm] = useState<'expense' | 'income' | null>(null)
-  const [tabIndex, setTabIndex] = useState(0)
+  const [tab, setTab] = useState<'expense' | 'income'>('expense')
+  const [deleteExpenseTarget, setDeleteExpenseTarget] = useState<Expense | null>(null)
+  const [deleteIncomeTarget, setDeleteIncomeTarget] = useState<Income | null>(null)
 
-  const isFuture = useMemo(() => {
-    if (!date) return false
-    return isPlanned(date)
-  }, [date])
+  // カテゴリを別々に取得
+  const { categories: expenseCategories, createCategory: createExpenseCategory } = useCategories('EXPENSE')
+  const { categories: incomeCategories, createCategory: createIncomeCategory } = useCategories('INCOME')
+  const { notification, showSuccess, showError, hideNotification } = useNotification()
 
-  const isToday = useMemo(() => {
-    if (!date) return false
-    return dayjs(date).isSame(dayjs(), 'day')
-  }, [date])
+  const currentDate = dayjs(date)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!date) return
     try {
       setLoading(true)
-
-      // 定期支出APIを叩いて未処理分を自動生成
-      await recurringExpenseApi.getAll().catch(() => {})
-
-      // 通常データと予定データを両方取得
-      const [
-        actualExpenses,
-        plannedExpenses,
-        actualIncomes,
-        plannedIncomes,
-        summaryData,
-      ] = await Promise.all([
-        expenseApi.getByDateRange(date, date).catch(() => []),
-        expenseApi.getPlanned().catch(() => []),
-        incomeApi.getByDateRange(date, date).catch(() => []),
-        incomeApi.getPlanned().catch(() => []),
+      const [expenseData, incomeData, summaryData] = await Promise.all([
+        expenseApi.getByDateRange(date, date),
+        incomeApi.getByDateRange(date, date),
         summaryApi.getForecast(date),
       ])
-
-      // 日付でフィルタリングして結合（expenseDateのみで判定）
-      const filteredPlannedExpenses = plannedExpenses.filter(
-        (e) => e.expenseDate === date
-      )
-      const filteredPlannedIncomes = plannedIncomes.filter(
-        (i) => i.incomeDate === date
-      )
-
-      // 重複を除いて結合（IDベースで重複チェック）
-      const allExpenses = [...actualExpenses]
-      filteredPlannedExpenses.forEach((pe) => {
-        if (!allExpenses.some((e) => e.id === pe.id)) {
-          allExpenses.push(pe)
-        }
-      })
-
-      const allIncomes = [...actualIncomes]
-      filteredPlannedIncomes.forEach((pi) => {
-        if (!allIncomes.some((i) => i.id === pi.id)) {
-          allIncomes.push(pi)
-        }
-      })
-
-      setExpenses(allExpenses)
-      setIncomes(allIncomes)
+      setExpenses(expenseData)
+      setIncomes(incomeData)
       setSummary(summaryData)
-    } catch (err) {
+    } catch (error) {
+      console.error('データの取得に失敗しました', error)
       showError('データの取得に失敗しました')
-      console.error(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [date, showError])
 
   useEffect(() => {
     fetchData()
-  }, [date])
+  }, [fetchData])
 
-  // 支出のハンドラー
   const handleCreateExpense = async (data: CreateExpenseRequest) => {
     try {
-      const newExpense = await expenseApi.create(data)
-      setExpenses((prev) => [newExpense, ...prev])
+      await expenseApi.create(data)
       showSuccess('支出を追加しました')
-      setShowAddForm(null)
-      // サマリー更新
-      const summaryData = await summaryApi.getForecast(date!)
-      setSummary(summaryData)
+      fetchData()
     } catch {
       showError('支出の追加に失敗しました')
     }
   }
 
-  const handleUpdateExpense = async (id: string, data: UpdateExpenseRequest) => {
-    try {
-      const updated = await expenseApi.update(id, data)
-      setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)))
-      showSuccess('支出を更新しました')
-      setEditingExpense(null)
-      const summaryData = await summaryApi.getForecast(date!)
-      setSummary(summaryData)
-    } catch {
-      showError('支出の更新に失敗しました')
-    }
-  }
-
-  // 収入のハンドラー
   const handleCreateIncome = async (data: CreateIncomeRequest) => {
     try {
-      const newIncome = await incomeApi.create(data)
-      setIncomes((prev) => [newIncome, ...prev])
+      await incomeApi.create(data)
       showSuccess('収入を追加しました')
-      setShowAddForm(null)
-      const summaryData = await summaryApi.getForecast(date!)
-      setSummary(summaryData)
-    } catch  {
+      fetchData()
+    } catch {
       showError('収入の追加に失敗しました')
     }
   }
 
-  const handleUpdateIncome = async (id: string, data: UpdateIncomeRequest) => {
+  const handleDeleteExpense = async () => {
+    if (!deleteExpenseTarget) return
     try {
-      const updated = await incomeApi.update(id, data)
-      setIncomes((prev) => prev.map((i) => (i.id === id ? updated : i)))
-      showSuccess('収入を更新しました')
-      setEditingIncome(null)
-      const summaryData = await summaryApi.getForecast(date!)
-      setSummary(summaryData)
-    } catch {
-      showError('収入の更新に失敗しました')
-    }
-  }
-
-  // 削除ハンドラー
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    try {
-      if (deleteTarget.type === 'expense') {
-        await expenseApi.delete(deleteTarget.id)
-        setExpenses((prev) => prev.filter((e) => e.id !== deleteTarget.id))
-      } else {
-        await incomeApi.delete(deleteTarget.id)
-        setIncomes((prev) => prev.filter((i) => i.id !== deleteTarget.id))
-      }
-      showSuccess(`${deleteTarget.type === 'expense' ? '支出' : '収入'}を削除しました`)
-      setDeleteTarget(null)
-      const summaryData = await summaryApi.getForecast(date!)
-      setSummary(summaryData)
+      await expenseApi.delete(deleteExpenseTarget.id)
+      showSuccess('支出を削除しました')
+      setDeleteExpenseTarget(null)
+      fetchData()
     } catch {
       showError('削除に失敗しました')
     }
   }
 
-  const formattedDate = useMemo(() => {
-    return date ? dayjs(date).format('YYYY年M月D日 (ddd)') : ''
-  }, [date])
+  const handleDeleteIncome = async () => {
+    if (!deleteIncomeTarget) return
+    try {
+      await incomeApi.delete(deleteIncomeTarget.id)
+      showSuccess('収入を削除しました')
+      setDeleteIncomeTarget(null)
+      fetchData()
+    } catch {
+      showError('削除に失敗しました')
+    }
+  }
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = direction === 'prev'
+      ? currentDate.subtract(1, 'day')
+      : currentDate.add(1, 'day')
+    navigate(`/day/${newDate.format('YYYY-MM-DD')}`)
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -198,204 +135,172 @@ export default function DayDetailPage() {
 
   if (loading) return <Loading />
 
+  const dayTotal = {
+    income: incomes.reduce((sum, i) => sum + i.amount, 0),
+    expense: expenses.reduce((sum, e) => sum + e.amount, 0),
+  }
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       {/* ヘッダー */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/calendar')}>
+      <Box sx={{ mb: 2 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/calendar')}
+          sx={{ mb: 1 }}
+        >
           カレンダーに戻る
         </Button>
-        <Typography variant="h5">{formattedDate}</Typography>
-        {isFuture && (
-          <Typography variant="body2" sx={{ color: 'warning.main' }}>
-            （予定）
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton onClick={() => navigateDate('prev')}>
+            <ChevronLeft />
+          </IconButton>
+          <Typography
+            variant={isMobile ? 'h5' : 'h4'}
+            sx={{ fontWeight: 700, color: 'primary.main' }}
+          >
+            📅 {currentDate.format('YYYY年M月D日')}
           </Typography>
-        )}
-        {isToday && (
-          <Typography variant="body2" sx={{ color: 'primary.main' }}>
-            （今日）
-          </Typography>
-        )}
+          <IconButton onClick={() => navigateDate('next')}>
+            <ChevronRight />
+          </IconButton>
+        </Box>
       </Box>
 
-      {/* 総資産・予測サマリー */}
-      {summary && (
-        <Paper
-          sx={{
-            p: 3,
-            mb: 3,
-            backgroundColor: isFuture ? 'rgba(255, 235, 59, 0.1)' : 'rgba(33, 150, 243, 0.08)',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <AccountBalance color={isFuture ? 'warning' : 'primary'} />
-            <Typography variant="h6">
-              {isFuture ? `${formattedDate} 時点の予測` : '資産状況'}
+      {/* サマリー */}
+      <Paper
+        sx={{
+          p: { xs: 2, sm: 3 },
+          mb: 3,
+          display: 'flex',
+          justifyContent: 'space-around',
+          flexWrap: 'wrap',
+          gap: { xs: 1, sm: 2 },
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFAF5 100%)',
+        }}
+      >
+        <Box sx={{ textAlign: 'center', minWidth: { xs: '45%', sm: 'auto' } }}>
+          <Typography variant="caption" color="text.secondary">
+            📥 収入
+          </Typography>
+          <Typography
+            variant={isMobile ? 'body1' : 'h6'}
+            sx={{ color: 'success.main', fontWeight: 700 }}
+          >
+            +{formatCurrency(dayTotal.income)}
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'center', minWidth: { xs: '45%', sm: 'auto' } }}>
+          <Typography variant="caption" color="text.secondary">
+            📤 支出
+          </Typography>
+          <Typography
+            variant={isMobile ? 'body1' : 'h6'}
+            sx={{ color: 'error.main', fontWeight: 700 }}
+          >
+            -{formatCurrency(dayTotal.expense)}
+          </Typography>
+        </Box>
+        {summary && (
+          <Box sx={{ textAlign: 'center', minWidth: { xs: '100%', sm: 'auto' } }}>
+            <Typography variant="caption" color="text.secondary">
+              💰 この日時点の残高
+            </Typography>
+            <Typography
+              variant={isMobile ? 'body1' : 'h6'}
+              sx={{
+                color: summary.forecastBalance >= 0 ? 'primary.main' : 'error.main',
+                fontWeight: 700,
+              }}
+            >
+              {formatCurrency(summary.forecastBalance)}
             </Typography>
           </Box>
-
-          <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            {/* 現在残高 */}
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                現在残高
-              </Typography>
-              <Typography variant="h6">{formatCurrency(summary.currentBalance)}</Typography>
-            </Box>
-
-            {/* 予定収入（未来の場合のみ詳細表示） */}
-            {isFuture && (
-              <>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    予定収入
-                  </Typography>
-                  <Typography variant="h6" sx={{ color: 'success.main' }}>
-                    +{formatCurrency(summary.plannedIncome)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    予定支出
-                  </Typography>
-                  <Typography variant="h6" sx={{ color: 'error.main' }}>
-                    -{formatCurrency(summary.plannedExpense)}
-                  </Typography>
-                </Box>
-                <Divider orientation="vertical" flexItem />
-              </>
-            )}
-
-            {/* 予測残高 / 総資産 */}
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                {isFuture ? '予測残高' : '総資産'}
-              </Typography>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 'bold',
-                  color: summary.forecastBalance >= 0 ? 'primary.main' : 'error.main',
-                }}
-              >
-                {formatCurrency(summary.forecastBalance)}
-              </Typography>
-            </Box>
-          </Box>
-        </Paper>
-      )}
-
-      {/* 追加ボタン */}
-      <Box sx={{ mb: 3 }}>
-        {showAddForm === 'expense' ? (
-          <Box>
-            <ExpenseForm
-              categories={expenseCategories}
-              onSubmit={handleCreateExpense}
-              onCreateCategory={createCategory}
-              initialDate={date}
-            />
-            <Button onClick={() => setShowAddForm(null)} sx={{ mt: 1 }}>
-              キャンセル
-            </Button>
-          </Box>
-        ) : showAddForm === 'income' ? (
-          <Box>
-            <IncomeForm
-              categories={incomeCategories}
-              onSubmit={handleCreateIncome}
-              onCreateCategory={createCategory}
-              initialDate={date}
-            />
-            <Button onClick={() => setShowAddForm(null)} sx={{ mt: 1 }}>
-              キャンセル
-            </Button>
-          </Box>
-        ) : (
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<Add />}
-              onClick={() => setShowAddForm('expense')}
-            >
-              支出を追加
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<Add />}
-              onClick={() => setShowAddForm('income')}
-            >
-              収入を追加
-            </Button>
-          </Box>
         )}
-      </Box>
+      </Paper>
 
       {/* タブ */}
-      <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 2 }}>
-        <Tab label={`支出 (${expenses.length})`} />
-        <Tab label={`収入 (${incomes.length})`} />
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{
+          mb: 3,
+          '& .MuiTab-root': {
+            minWidth: { xs: 0, sm: 120 },
+            flex: { xs: 1, sm: 'none' },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            px: { xs: 1, sm: 3 },
+          },
+        }}
+      >
+        <Tab label={`💸 支出 (${expenses.length})`} value="expense" />
+        <Tab label={`💰 収入 (${incomes.length})`} value="income" />
       </Tabs>
 
-      {/* 支出一覧 */}
-      {tabIndex === 0 && (
-        <ExpenseList
-          expenses={expenses}
-          onEdit={setEditingExpense}
-          onDelete={(id) => setDeleteTarget({ type: 'expense', id })}
-          showDate={false}
-        />
-      )}
-
-      {/* 収入一覧 */}
-      {tabIndex === 1 && (
-        <IncomeList
-          incomes={incomes}
-          onEdit={setEditingIncome}
-          onDelete={(id) => setDeleteTarget({ type: 'income', id })}
-          showDate={false}
-        />
-      )}
-
-      {/* 支出編集ダイアログ */}
-      <ExpenseEditDialog
-        open={!!editingExpense}
-        expense={editingExpense}
+    {/* フォーム・リスト */}
+    {tab === 'expense' ? (
+    <>
+        <ExpenseForm
         categories={expenseCategories}
-        onClose={() => setEditingExpense(null)}
-        onSubmit={handleUpdateExpense}
-        onCreateCategory={createCategory}
-      />
-
-      {/* 収入編集ダイアログ */}
-      <IncomeEditDialog
-        open={!!editingIncome}
-        income={editingIncome}
+        onSubmit={handleCreateExpense}
+        onCreateCategory={createExpenseCategory}
+        initialDate={date}
+        />
+        <ExpenseList
+        expenses={expenses}
+        onEdit={() => {}} // TODO: 編集機能
+        onDelete={(id) => {
+            const target = expenses.find((e) => e.id === id)
+            if (target) setDeleteExpenseTarget(target)
+        }}
+        showDate={false}
+        />
+    </>
+    ) : (
+    <>
+        <IncomeForm
         categories={incomeCategories}
-        onClose={() => setEditingIncome(null)}
-        onSubmit={handleUpdateIncome}
-        onCreateCategory={createCategory}
-      />
+        onSubmit={handleCreateIncome}
+        onCreateCategory={createIncomeCategory}
+        initialDate={date}
+        />
+        <IncomeList
+        incomes={incomes}
+        onEdit={() => {}} // TODO: 編集機能
+        onDelete={(id) => {
+            const target = incomes.find((i) => i.id === id)
+            if (target) setDeleteIncomeTarget(target)
+        }}
+        showDate={false}
+        />
+    </>
+    )}
 
       {/* 削除確認ダイアログ */}
       <ConfirmDialog
-        open={!!deleteTarget}
-        title={`${deleteTarget?.type === 'expense' ? '支出' : '収入'}の削除`}
-        message={`この${deleteTarget?.type === 'expense' ? '支出' : '収入'}を削除しますか？`}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+        open={!!deleteExpenseTarget}
+        title="支出の削除"
+        message={`「${deleteExpenseTarget?.description || ''}」を削除しますか？`}
+        onConfirm={handleDeleteExpense}
+        onCancel={() => setDeleteExpenseTarget(null)}
       />
 
-      {notification && (
-        <Notification
-          open={true}
-          message={notification.message}
-          severity={notification.severity}
-          onClose={clearNotification}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deleteIncomeTarget}
+        title="収入の削除"
+        message={`「${deleteIncomeTarget?.description || ''}」を削除しますか？`}
+        onConfirm={handleDeleteIncome}
+        onCancel={() => setDeleteIncomeTarget(null)}
+      />
+
+      {/* 通知 */}
+      <Notification
+        open={notification.open}
+        message={notification.message}
+        severity={notification.severity}
+        onClose={hideNotification}
+      />
     </Container>
   )
 }
