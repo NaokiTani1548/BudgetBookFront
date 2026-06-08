@@ -26,6 +26,7 @@ import {
   Category,
   Repeat,
   Logout,
+  CameraAlt,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
 import theme from './theme'
@@ -39,12 +40,14 @@ import CalendarPage from './pages/CalendarPage'
 import DayDetailPage from './pages/DayDetailPage'
 import CategoryPage from './pages/CategoryPage'
 import RecurringExpensePage from './pages/RecurringExpensePage'
+import OcrPage from './pages/OcrPage'
 
 const DRAWER_WIDTH = 260
 
 const menuItems = [
-  { path: '/list', label: '収支リスト', icon: <ListIcon />, emoji: '📋' },
   { path: '/calendar', label: 'カレンダー', icon: <CalendarMonth />, emoji: '📅' },
+  { path: '/list', label: '収支リスト', icon: <ListIcon />, emoji: '📋' },
+  { path: '/ocr', label: 'レシート読取', icon: <CameraAlt />, emoji: '📸' },
   { path: '/recurring', label: '定期支出', icon: <Repeat />, emoji: '🔄' },
   { path: '/categories', label: 'カテゴリ', icon: <Category />, emoji: '🏷️' },
 ]
@@ -95,8 +98,10 @@ function Navigation() {
           >
             <MenuIcon />
           </IconButton>
+
+          {/* ロゴ */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
-            {/* <Box
+            <Box
               component="img"
               src="/logo.png"
               alt="KAKEKAKEI"
@@ -104,7 +109,7 @@ function Navigation() {
                 height: 32,
                 width: 'auto',
               }}
-            /> */}
+            />
             <Typography
               variant="h6"
               sx={{
@@ -279,6 +284,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute>
+                <CalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/list"
             element={
               <ProtectedRoute>
@@ -287,10 +300,10 @@ function AppContent() {
             }
           />
           <Route
-            path="/calendar"
+            path="/ocr"
             element={
               <ProtectedRoute>
-                <CalendarPage />
+                <OcrPage />
               </ProtectedRoute>
             }
           />
