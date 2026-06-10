@@ -12,20 +12,36 @@ export default function Loading() {
         gap: 2,
       }}
     >
-      <Box sx={{ position: 'relative' }}>
+      <Box
+        sx={{
+          position: 'relative',
+          width: 80,
+          height: 80,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* ぐるぐるマーク（外側） */}
         <CircularProgress
-          size={60}
-          thickness={4}
-          sx={{ color: 'primary.main' }}
+          size={80}
+          thickness={3}
+          sx={{
+            color: '#E86A33',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+          }}
         />
+        {/* ロゴ（中央） */}
         <Box
           component="img"
           src="/logo.png"
           alt="Loading"
           sx={{
-            position: 'absolute',
-            width: 36,
-            height: 'auto',
+            width: 40,
+            height: 40,
+            objectFit: 'contain',
           }}
         />
       </Box>

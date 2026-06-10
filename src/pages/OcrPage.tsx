@@ -7,9 +7,9 @@ import {
   useTheme,
 } from '@mui/material'
 import { useCategories } from '../hooks/useCategories'
+import { useExpenses } from '../hooks/useExpenses'
 import { useNotification } from '../hooks/useNotification'
 import { useCurrentBalance } from '../hooks/useCurrentBalance'
-import { expenseApi } from '../api/expenseApi'
 import OcrUploader from '../components/ocr/OcrUploader'
 import OcrResultList, { type OcrItemWithMeta } from '../components/ocr/OcrResultList'
 import BalanceSummary from '../components/common/BalanceSummary'
@@ -22,47 +22,57 @@ export default function OcrPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const { categories, loading: categoriesLoading, createCategory } = useCategories('EXPENSE')
+  const { createExpense } = useExpenses()
   const { notification, showSuccess, showError, hideNotification } = useNotification()
   const { summary, loading: balanceLoading, refetch: refetchBalance } = useCurrentBalance()
 
   const [ocrItems, setOcrItems] = useState<OcrItem[] | null>(null)
   const [ocrSubmitting, setOcrSubmitting] = useState(false)
 
-  // OCR解析完了
   const handleOcrComplete = (items: OcrItem[]) => {
     setOcrItems(items)
   }
 
-  // OCR結果を登録
   const handleOcrSubmit = async (items: OcrItemWithMeta[]) => {
+    console.log('handleOcrSubmit called with', items.length, 'items')
+
     setOcrSubmitting(true)
-    try {
-      let successCount = 0
-      for (const item of items) {
-        try {
-          await expenseApi.create({
-            amount: item.amount,
-            expenseDate: item.expenseDate,
-            categoryId: item.categoryId,
-            description: item.description,
-            paymentMethod: item.paymentMethod,
-          })
-          successCount++
-        } catch (err) {
-          console.error('登録エラー:', err)
-        }
+    let successCount = 0
+    let failCount = 0
+
+    for (const item of items) {
+      try {
+        console.log('登録中:', item.description, item.amount)
+        await createExpense({
+          amount: item.amount,
+          expenseDate: item.expenseDate,
+          categoryId: item.categoryId,
+          description: item.description,
+          paymentMethod: item.paymentMethod,
+        })
+        console.log('登録成功:', item.description)
+        successCount++
+      } catch (err) {
+        console.error('登録失敗:', item.description, err)
+        failCount++
       }
-      showSuccess(`${successCount}件の支出を登録しました`)
-      setOcrItems(null)
+    }
+
+    setOcrSubmitting(false)
+
+    if (successCount > 0) {
       refetchBalance()
-    } catch {
+      setOcrItems(null)
+      if (failCount > 0) {
+        showSuccess(`${successCount}件を登録しました（${failCount}件失敗）`)
+      } else {
+        showSuccess(`${successCount}件の支出を登録しました`)
+      }
+    } else {
       showError('登録に失敗しました')
-    } finally {
-      setOcrSubmitting(false)
     }
   }
 
-  // OCRキャンセル
   const handleOcrCancel = () => {
     setOcrItems(null)
   }
@@ -71,7 +81,6 @@ export default function OcrPage() {
 
   return (
     <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2, md: 3 }, py: { xs: 2, sm: 4 } }}>
-      {/* ヘッダー */}
       <Box sx={{ mb: 2 }}>
         <Typography
           variant={isMobile ? 'h5' : 'h4'}
@@ -85,10 +94,8 @@ export default function OcrPage() {
         </Typography>
       </Box>
 
-      {/* 現在の総資産 */}
       <BalanceSummary summary={summary} loading={balanceLoading} />
 
-      {/* OCR機能 */}
       {ocrItems ? (
         <OcrResultList
           items={ocrItems}
@@ -102,7 +109,6 @@ export default function OcrPage() {
         <OcrUploader onAnalyzeComplete={handleOcrComplete} />
       )}
 
-      {/* 使い方ガイド */}
       {!ocrItems && (
         <Box
           sx={{
@@ -160,7 +166,6 @@ export default function OcrPage() {
         </Box>
       )}
 
-      {/* 通知 */}
       <Notification
         open={notification.open}
         message={notification.message}

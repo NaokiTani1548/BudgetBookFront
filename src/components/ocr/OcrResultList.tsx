@@ -47,7 +47,6 @@ export default function OcrResultList({
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  // 各アイテムにID・チェック状態・カテゴリを追加
   const [ocrItems, setOcrItems] = useState<OcrItemWithMeta[]>(() =>
     items.map((item, index) => ({
       ...item,
@@ -119,12 +118,26 @@ export default function OcrResultList({
   }
 
   const handleSubmit = () => {
-    const checkedItems = ocrItems.filter((item) => item.checked && item.categoryId)
+    // チェックされている項目を取得
+    const checkedItems = ocrItems.filter((item) => item.checked)
+
+    // カテゴリ未選択の項目がないかチェック
+    const missingCategory = checkedItems.filter((item) => !item.categoryId)
+    if (missingCategory.length > 0) {
+      alert('カテゴリが未選択の項目があります。すべての項目にカテゴリを設定してください。')
+      return
+    }
+
+    console.log('登録する項目:', checkedItems.length, '件')
+    console.log('登録データ:', checkedItems)
+
     onSubmit(checkedItems)
   }
 
   const checkedCount = ocrItems.filter((item) => item.checked).length
   const allChecked = ocrItems.length > 0 && checkedCount === ocrItems.length
+  // カテゴリ未選択の警告
+  const missingCategoryCount = ocrItems.filter((item) => item.checked && !item.categoryId).length
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -148,6 +161,13 @@ export default function OcrResultList({
         内容を確認し、カテゴリを選択してください。チェックした項目のみ登録されます。
       </Alert>
 
+      {/* カテゴリ未選択の警告 */}
+      {missingCategoryCount > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {missingCategoryCount}件のチェック済み項目でカテゴリが未選択です。
+        </Alert>
+      )}
+
       {/* 全選択 */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Checkbox
@@ -169,7 +189,11 @@ export default function OcrResultList({
               p: 2,
               borderRadius: 2,
               border: '1px solid',
-              borderColor: item.checked ? 'primary.light' : 'divider',
+              borderColor: item.checked
+                ? item.categoryId
+                  ? 'primary.light'
+                  : 'warning.main'
+                : 'divider',
               backgroundColor: item.checked ? 'rgba(232, 106, 51, 0.03)' : 'transparent',
               opacity: item.checked ? 1 : 0.6,
             }}
@@ -182,7 +206,6 @@ export default function OcrResultList({
               />
               <Box sx={{ flex: 1 }}>
                 {item.isEditing ? (
-                  // 編集モード
                   <Box
                     sx={{
                       display: 'grid',
@@ -244,7 +267,6 @@ export default function OcrResultList({
                     </Box>
                   </Box>
                 ) : (
-                  // 表示モード
                   <>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                       <Box>
@@ -264,7 +286,6 @@ export default function OcrResultList({
                         </IconButton>
                       </Box>
                     </Box>
-                    {/* カテゴリ選択（常に表示） */}
                     <CategorySelectWithCreate
                       categories={categories}
                       value={item.categoryId}

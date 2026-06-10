@@ -16,7 +16,7 @@ export const ocrApi = {
     const formData = new FormData()
     formData.append('image', image)
 
-    const response = await client.post<OcrResponse>('/api/ocr/analyze', formData, {
+    const response = await client.post<OcrResponse>('/ocr/analyze', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
