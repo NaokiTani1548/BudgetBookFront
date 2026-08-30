@@ -1,50 +1,57 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { categoryApi } from '../api/categoryApi'
-import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../types/category'
+import { queryKeys } from '../lib/queryClient'
+import type { CreateCategoryRequest, UpdateCategoryRequest } from '../types/category'
 
 export function useCategories(type?: 'EXPENSE' | 'INCOME') {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      setLoading(true)
+  const { data: categories = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.categories(type),
+    queryFn: async () => {
       const data = await categoryApi.getAll()
-      // typeが指定されている場合はフィルタリング
-      const filtered = type ? data.filter((c) => c.type === type) : data
-      setCategories(filtered)
-    } catch (error) {
-      console.error('カテゴリの取得に失敗しました', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [type])
+      return type ? data.filter((c) => c.type === type) : data
+    },
+  })
 
-  useEffect(() => {
-    fetchCategories()
-  }, [fetchCategories])
+  const createMutation = useMutation({
+    mutationFn: (data: CreateCategoryRequest) => categoryApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    },
+  })
 
-  const createCategory = async (data: CreateCategoryRequest): Promise<Category> => {
-    const newCategory = await categoryApi.create(data)
-    setCategories((prev) => [...prev, newCategory])
-    return newCategory
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateCategoryRequest }) =>
+      categoryApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => categoryApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    },
+  })
+
+  const createCategory = async (data: CreateCategoryRequest) => {
+    return createMutation.mutateAsync(data)
   }
 
   const updateCategory = async (id: string, data: UpdateCategoryRequest) => {
-    const updated = await categoryApi.update(id, data)
-    setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)))
-    return updated
+    return updateMutation.mutateAsync({ id, data })
   }
 
   const deleteCategory = async (id: string) => {
-    await categoryApi.delete(id)
-    setCategories((prev) => prev.filter((c) => c.id !== id))
+    return deleteMutation.mutateAsync(id)
   }
 
   return {
     categories,
     loading,
-    fetchCategories,
+    fetchCategories: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
     createCategory,
     updateCategory,
     deleteCategory,

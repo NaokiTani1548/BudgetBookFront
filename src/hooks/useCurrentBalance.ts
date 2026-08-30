@@ -1,34 +1,19 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { summaryApi } from '../api/summaryApi'
-import type { ForecastSummary } from '../types/summary'
+import { queryKeys } from '../lib/queryClient'
 
 export function useCurrentBalance() {
-  const [summary, setSummary] = useState<ForecastSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchBalance = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await summaryApi.getCurrentBalance()
-      setSummary(data)
-      setError(null)
-    } catch (err) {
-      setError('残高の取得に失敗しました')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchBalance()
-  }, [fetchBalance])
+  const { data: summary = null, isLoading: loading, error } = useQuery({
+    queryKey: queryKeys.summary.currentBalance,
+    queryFn: () => summaryApi.getCurrentBalance(),
+  })
 
   return {
     summary,
     loading,
-    error,
-    refetch: fetchBalance,
+    error: error ? '残高の取得に失敗しました' : null,
+    refetch: () => queryClient.invalidateQueries({ queryKey: queryKeys.summary.currentBalance }),
   }
 }

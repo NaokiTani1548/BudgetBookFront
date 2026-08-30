@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Container,
@@ -13,12 +13,14 @@ import {
   useTheme,
 } from '@mui/material'
 import { ArrowBack, ChevronLeft, ChevronRight } from '@mui/icons-material'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
 import { summaryApi } from '../api/summaryApi'
 import { useCategories } from '../hooks/useCategories'
 import { useNotification } from '../hooks/useNotification'
+import { queryKeys } from '../lib/queryClient'
 import ExpenseForm from '../components/expense/ExpenseForm'
 import ExpenseList from '../components/expense/ExpenseList'
 import IncomeForm from '../components/income/IncomeForm'
@@ -26,97 +28,106 @@ import IncomeList from '../components/income/IncomeList'
 import Loading from '../components/common/Loading'
 import Notification from '../components/common/Notification'
 import ConfirmDialog from '../components/common/ConfirmDialog'
-import type { Expense, CreateExpenseRequest } from '../types/expense'
+import type { CreateExpenseRequest } from '../types/expense'
+import type { Expense } from '../types/expense'
 import type { Income, CreateIncomeRequest } from '../types/income'
-import type { ForecastSummary } from '../types/summary'
 
 export default function DayDetailPage() {
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const queryClient = useQueryClient()
 
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [incomes, setIncomes] = useState<Income[]>([])
-  const [summary, setSummary] = useState<ForecastSummary | null>(null)
-  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'expense' | 'income'>('expense')
   const [deleteExpenseTarget, setDeleteExpenseTarget] = useState<Expense | null>(null)
   const [deleteIncomeTarget, setDeleteIncomeTarget] = useState<Income | null>(null)
 
-  // カテゴリを別々に取得
   const { categories: expenseCategories, createCategory: createExpenseCategory } = useCategories('EXPENSE')
   const { categories: incomeCategories, createCategory: createIncomeCategory } = useCategories('INCOME')
   const { notification, showSuccess, showError, hideNotification } = useNotification()
 
   const currentDate = dayjs(date)
 
-  const fetchData = useCallback(async () => {
-    if (!date) return
-    try {
-      setLoading(true)
-      const [expenseData, incomeData, summaryData] = await Promise.all([
-        expenseApi.getByDateRange(date, date),
-        incomeApi.getByDateRange(date, date),
-        summaryApi.getForecast(date),
-      ])
-      setExpenses(expenseData)
-      setIncomes(incomeData)
-      setSummary(summaryData)
-    } catch (error) {
-      console.error('データの取得に失敗しました', error)
-      showError('データの取得に失敗しました')
-    } finally {
-      setLoading(false)
-    }
-  }, [date, showError])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  const handleCreateExpense = async (data: CreateExpenseRequest) => {
-    try {
-      await expenseApi.create(data)
-      showSuccess('支出を追加しました')
-      fetchData()
-    } catch {
-      showError('支出の追加に失敗しました')
-    }
+  const invalidateRelated = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.summary.forecast(date!) })
+    queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    queryClient.invalidateQueries({ queryKey: ['incomes'] })
+    queryClient.invalidateQueries({ queryKey: ['calendar'] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.summary.currentBalance })
   }
 
-  const handleCreateIncome = async (data: CreateIncomeRequest) => {
-    try {
-      await incomeApi.create(data)
+  const { data, isLoading: loading } = useQuery({
+    queryKey: queryKeys.summary.forecast(date!),
+    queryFn: async () => {
+      const [expenseData, incomeData, summaryData] = await Promise.all([
+        expenseApi.getByDateRange(date!, date!),
+        incomeApi.getByDateRange(date!, date!),
+        summaryApi.getForecast(date!),
+      ])
+      return { expenses: expenseData, incomes: incomeData, summary: summaryData }
+    },
+    enabled: !!date,
+  })
+
+  const expenses = data?.expenses ?? []
+  const incomes = data?.incomes ?? []
+  const summary = data?.summary ?? null
+
+  const createExpenseMutation = useMutation({
+    mutationFn: (reqData: CreateExpenseRequest) => expenseApi.create(reqData),
+    onSuccess: () => {
+      showSuccess('支出を追加しました')
+      invalidateRelated()
+    },
+    onError: () => showError('支出の追加に失敗しました'),
+  })
+
+  const createIncomeMutation = useMutation({
+    mutationFn: (reqData: CreateIncomeRequest) => incomeApi.create(reqData),
+    onSuccess: () => {
       showSuccess('収入を追加しました')
-      fetchData()
-    } catch {
-      showError('収入の追加に失敗しました')
-    }
+      invalidateRelated()
+    },
+    onError: () => showError('収入の追加に失敗しました'),
+  })
+
+  const deleteExpenseMutation = useMutation({
+    mutationFn: (id: string) => expenseApi.delete(id),
+    onSuccess: () => {
+      showSuccess('支出を削除しました')
+      setDeleteExpenseTarget(null)
+      invalidateRelated()
+    },
+    onError: () => showError('削除に失敗しました'),
+  })
+
+  const deleteIncomeMutation = useMutation({
+    mutationFn: (id: string) => incomeApi.delete(id),
+    onSuccess: () => {
+      showSuccess('収入を削除しました')
+      setDeleteIncomeTarget(null)
+      invalidateRelated()
+    },
+    onError: () => showError('削除に失敗しました'),
+  })
+
+  const handleCreateExpense = async (reqData: CreateExpenseRequest) => {
+    createExpenseMutation.mutate(reqData)
+  }
+
+  const handleCreateIncome = async (reqData: CreateIncomeRequest) => {
+    createIncomeMutation.mutate(reqData)
   }
 
   const handleDeleteExpense = async () => {
     if (!deleteExpenseTarget) return
-    try {
-      await expenseApi.delete(deleteExpenseTarget.id)
-      showSuccess('支出を削除しました')
-      setDeleteExpenseTarget(null)
-      fetchData()
-    } catch {
-      showError('削除に失敗しました')
-    }
+    deleteExpenseMutation.mutate(deleteExpenseTarget.id)
   }
 
   const handleDeleteIncome = async () => {
     if (!deleteIncomeTarget) return
-    try {
-      await incomeApi.delete(deleteIncomeTarget.id)
-      showSuccess('収入を削除しました')
-      setDeleteIncomeTarget(null)
-      fetchData()
-    } catch {
-      showError('削除に失敗しました')
-    }
+    deleteIncomeMutation.mutate(deleteIncomeTarget.id)
   }
 
   const navigateDate = (direction: 'prev' | 'next') => {

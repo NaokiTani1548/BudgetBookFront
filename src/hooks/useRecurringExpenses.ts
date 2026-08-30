@@ -1,69 +1,73 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { recurringExpenseApi } from '../api/recurringExpenseApi'
+import { queryKeys } from '../lib/queryClient'
 import type {
-  RecurringExpense,
   CreateRecurringExpenseRequest,
   UpdateRecurringExpenseRequest,
 } from '../types/recurringExpense'
-import { recurringExpenseApi } from '../api/recurringExpenseApi'
 
 export function useRecurringExpenses() {
-  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchRecurringExpenses = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await recurringExpenseApi.getAll()
-      setRecurringExpenses(data)
-      setError(null)
-    } catch (err) {
-      setError('定期支出の取得に失敗しました')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const { data: recurringExpenses = [], isLoading: loading, error } = useQuery({
+    queryKey: queryKeys.recurringExpenses,
+    queryFn: () => recurringExpenseApi.getAll(),
+  })
 
-  useEffect(() => {
-    fetchRecurringExpenses()
-  }, [fetchRecurringExpenses])
+  const invalidateRelated = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.recurringExpenses })
+    queryClient.invalidateQueries({ queryKey: ['calendar'] })
+    queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.summary.currentBalance })
+  }
 
-  const createRecurringExpense = useCallback(async (data: CreateRecurringExpenseRequest) => {
-    const newItem = await recurringExpenseApi.create(data)
-    setRecurringExpenses((prev) => [newItem, ...prev])
-    return newItem
-  }, [])
+  const createMutation = useMutation({
+    mutationFn: (data: CreateRecurringExpenseRequest) => recurringExpenseApi.create(data),
+    onSuccess: invalidateRelated,
+  })
 
-  const updateRecurringExpense = useCallback(async (id: string, data: UpdateRecurringExpenseRequest) => {
-    const updated = await recurringExpenseApi.update(id, data)
-    setRecurringExpenses((prev) => prev.map((item) => (item.id === id ? updated : item)))
-    return updated
-  }, [])
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateRecurringExpenseRequest }) =>
+      recurringExpenseApi.update(id, data),
+    onSuccess: invalidateRelated,
+  })
 
-  const deleteRecurringExpense = useCallback(async (id: string) => {
-    await recurringExpenseApi.delete(id)
-    setRecurringExpenses((prev) => prev.filter((item) => item.id !== id))
-  }, [])
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => recurringExpenseApi.delete(id),
+    onSuccess: invalidateRelated,
+  })
 
-  const toggleActive = useCallback(async (id: string, isActive: boolean) => {
+  const createRecurringExpense = async (data: CreateRecurringExpenseRequest) => {
+    return createMutation.mutateAsync(data)
+  }
+
+  const updateRecurringExpense = async (id: string, data: UpdateRecurringExpenseRequest) => {
+    return updateMutation.mutateAsync({ id, data })
+  }
+
+  const deleteRecurringExpense = async (id: string) => {
+    return deleteMutation.mutateAsync(id)
+  }
+
+  const toggleActive = async (id: string, isActive: boolean) => {
     const item = recurringExpenses.find((r) => r.id === id)
     if (!item) return
 
-    const updated = await recurringExpenseApi.update(id, {
-      amount: item.amount,
-      billingDay: item.billingDay,
-      startDate: item.startDate,
-      endDate: item.endDate || undefined,
-      categoryId: item.categoryId || undefined,
-      description: item.description || undefined,
-      paymentMethod: item.paymentMethod || undefined,
-      memo: item.memo || undefined,
-      isActive,
+    return updateMutation.mutateAsync({
+      id,
+      data: {
+        amount: item.amount,
+        billingDay: item.billingDay,
+        startDate: item.startDate,
+        endDate: item.endDate || undefined,
+        categoryId: item.categoryId || undefined,
+        description: item.description || undefined,
+        paymentMethod: item.paymentMethod || undefined,
+        memo: item.memo || undefined,
+        isActive,
+      },
     })
-    setRecurringExpenses((prev) => prev.map((r) => (r.id === id ? updated : r)))
-    return updated
-  }, [recurringExpenses])
+  }
 
   const activeRecurringExpenses = recurringExpenses.filter((r) => r.isActive)
   const inactiveRecurringExpenses = recurringExpenses.filter((r) => !r.isActive)
@@ -73,8 +77,8 @@ export function useRecurringExpenses() {
     activeRecurringExpenses,
     inactiveRecurringExpenses,
     loading,
-    error,
-    fetchRecurringExpenses,
+    error: error ? '定期支出の取得に失敗しました' : null,
+    fetchRecurringExpenses: invalidateRelated,
     createRecurringExpense,
     updateRecurringExpense,
     deleteRecurringExpense,

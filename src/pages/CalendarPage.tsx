@@ -1,74 +1,65 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container, Typography, Box, Paper, useMediaQuery, useTheme } from '@mui/material'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
 import { incomeApi } from '../api/incomeApi'
 import { recurringExpenseApi } from '../api/recurringExpenseApi'
 import { useCurrentBalance } from '../hooks/useCurrentBalance'
+import { queryKeys } from '../lib/queryClient'
 import MonthCalendar from '../components/calendar/MonthCalendar'
 import BalanceSummary from '../components/common/BalanceSummary'
 import ExpenseByCategoryChart from '../components/chart/ExpenseByCategoryChart'
 import Loading from '../components/common/Loading'
-import type { Expense } from '../types/expense'
-import type { Income } from '../types/income'
 
 export default function CalendarPage() {
   const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [incomes, setIncomes] = useState<Income[]>([])
-  const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(dayjs())
-  const { summary, loading: balanceLoading, refetch: refetchBalance } = useCurrentBalance()
+  const { summary, loading: balanceLoading } = useCurrentBalance()
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const startOfMonth = currentMonth.startOf('month').format('YYYY-MM-DD')
-        const endOfMonth = currentMonth.endOf('month').format('YYYY-MM-DD')
+  const monthKey = currentMonth.format('YYYY-MM')
+  const startOfMonth = currentMonth.startOf('month').format('YYYY-MM-DD')
+  const endOfMonth = currentMonth.endOf('month').format('YYYY-MM-DD')
 
-        await recurringExpenseApi.getAll().catch(() => {})
+  const { data, isLoading: loading } = useQuery({
+    queryKey: queryKeys.calendar(monthKey),
+    queryFn: async () => {
+      await recurringExpenseApi.getAll().catch(() => {})
 
-        const [actualExpenses, plannedExpenses, actualIncomes, plannedIncomes] = await Promise.all([
-          expenseApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
-          expenseApi.getPlanned().catch(() => []),
-          incomeApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
-          incomeApi.getPlanned().catch(() => []),
-        ])
+      const [actualExpenses, plannedExpenses, actualIncomes, plannedIncomes] = await Promise.all([
+        expenseApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
+        expenseApi.getPlanned().catch(() => []),
+        incomeApi.getByDateRange(startOfMonth, endOfMonth).catch(() => []),
+        incomeApi.getPlanned().catch(() => []),
+      ])
 
-        const filteredPlannedExpenses = plannedExpenses.filter(
-          (e) => e.expenseDate >= startOfMonth && e.expenseDate <= endOfMonth
-        )
-        const filteredPlannedIncomes = plannedIncomes.filter(
-          (i) => i.incomeDate >= startOfMonth && i.incomeDate <= endOfMonth
-        )
+      const filteredPlannedExpenses = plannedExpenses.filter(
+        (e) => e.expenseDate >= startOfMonth && e.expenseDate <= endOfMonth
+      )
+      const filteredPlannedIncomes = plannedIncomes.filter(
+        (i) => i.incomeDate >= startOfMonth && i.incomeDate <= endOfMonth
+      )
 
-        const allExpenses = [...actualExpenses]
-        filteredPlannedExpenses.forEach((pe) => {
-          if (!allExpenses.some((e) => e.id === pe.id)) allExpenses.push(pe)
-        })
+      const allExpenses = [...actualExpenses]
+      filteredPlannedExpenses.forEach((pe) => {
+        if (!allExpenses.some((e) => e.id === pe.id)) allExpenses.push(pe)
+      })
 
-        const allIncomes = [...actualIncomes]
-        filteredPlannedIncomes.forEach((pi) => {
-          if (!allIncomes.some((i) => i.id === pi.id)) allIncomes.push(pi)
-        })
+      const allIncomes = [...actualIncomes]
+      filteredPlannedIncomes.forEach((pi) => {
+        if (!allIncomes.some((i) => i.id === pi.id)) allIncomes.push(pi)
+      })
 
-        setExpenses(allExpenses)
-        setIncomes(allIncomes)
-        refetchBalance()
-      } catch (err) {
-        console.error('データの取得に失敗しました', err)
-      } finally {
-        setLoading(false)
-      }
-    }
+      return { expenses: allExpenses, incomes: allIncomes }
+    },
+  })
 
-    fetchData()
-  }, [currentMonth, refetchBalance])
+  const expenses = data?.expenses ?? []
+  const incomes = data?.incomes ?? []
 
   const handleDayClick = (date: string) => {
     navigate(`/day/${date}`)

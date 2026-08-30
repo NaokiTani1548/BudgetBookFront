@@ -1,48 +1,54 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { expenseApi } from '../api/expenseApi'
-import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
+import { queryKeys } from '../lib/queryClient'
+import type { CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
 
 export function useExpenses() {
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const fetchExpenses = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await expenseApi.getAll()
-      setExpenses(data)
-    } catch (error) {
-      console.error('支出の取得に失敗しました', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const { data: expenses = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.expenses.all,
+    queryFn: () => expenseApi.getAll(),
+  })
 
-  useEffect(() => {
-    fetchExpenses()
-  }, [fetchExpenses])
+  const invalidateExpenseRelated = () => {
+    queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    queryClient.invalidateQueries({ queryKey: ['calendar'] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.summary.currentBalance })
+  }
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateExpenseRequest) => expenseApi.create(data),
+    onSuccess: invalidateExpenseRelated,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateExpenseRequest }) =>
+      expenseApi.update(id, data),
+    onSuccess: invalidateExpenseRelated,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => expenseApi.delete(id),
+    onSuccess: invalidateExpenseRelated,
+  })
 
   const createExpense = async (data: CreateExpenseRequest) => {
-    const newExpense = await expenseApi.create(data)
-    setExpenses((prev) => [newExpense, ...prev])
-    return newExpense
+    return createMutation.mutateAsync(data)
   }
 
   const updateExpense = async (id: string, data: UpdateExpenseRequest) => {
-    const updated = await expenseApi.update(id, data)
-    setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)))
-    return updated
+    return updateMutation.mutateAsync({ id, data })
   }
 
   const deleteExpense = async (id: string) => {
-    await expenseApi.delete(id)
-    setExpenses((prev) => prev.filter((e) => e.id !== id))
+    return deleteMutation.mutateAsync(id)
   }
 
   return {
     expenses,
     loading,
-    fetchExpenses,
+    fetchExpenses: invalidateExpenseRelated,
     createExpense,
     updateExpense,
     deleteExpense,

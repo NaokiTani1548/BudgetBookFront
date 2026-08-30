@@ -1,68 +1,57 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { incomeApi } from '../api/incomeApi'
+import { queryKeys } from '../lib/queryClient'
+import type { CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
 
 export function useIncomes() {
-  const [incomes, setIncomes] = useState<Income[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchIncomes = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await incomeApi.getAll()
-      setIncomes(data)
-      setError(null)
-    } catch (err) {
-      setError('収入の取得に失敗しました')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const { data: incomes = [], isLoading: loading, error } = useQuery({
+    queryKey: queryKeys.incomes.all,
+    queryFn: () => incomeApi.getAll(),
+  })
 
-  const fetchIncomesByDateRange = useCallback(async (from: string, to: string) => {
-    try {
-      setLoading(true)
-      const data = await incomeApi.getByDateRange(from, to)
-      setIncomes(data)
-      setError(null)
-    } catch (err) {
-      setError('収入の取得に失敗しました')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const invalidateIncomeRelated = () => {
+    queryClient.invalidateQueries({ queryKey: ['incomes'] })
+    queryClient.invalidateQueries({ queryKey: ['calendar'] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.summary.currentBalance })
+  }
 
-  useEffect(() => {
-    fetchIncomes()
-  }, [fetchIncomes])
+  const createMutation = useMutation({
+    mutationFn: (data: CreateIncomeRequest) => incomeApi.create(data),
+    onSuccess: invalidateIncomeRelated,
+  })
 
-  const createIncome = useCallback(async (data: CreateIncomeRequest) => {
-    const newIncome = await incomeApi.create(data)
-    setIncomes((prev) => [newIncome, ...prev])
-    return newIncome
-  }, [])
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateIncomeRequest }) =>
+      incomeApi.update(id, data),
+    onSuccess: invalidateIncomeRelated,
+  })
 
-  const updateIncome = useCallback(async (id: string, data: UpdateIncomeRequest) => {
-    const updated = await incomeApi.update(id, data)
-    setIncomes((prev) => prev.map((i) => (i.id === id ? updated : i)))
-    return updated
-  }, [])
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => incomeApi.delete(id),
+    onSuccess: invalidateIncomeRelated,
+  })
 
-  const deleteIncome = useCallback(async (id: string) => {
-    await incomeApi.delete(id)
-    setIncomes((prev) => prev.filter((i) => i.id !== id))
-  }, [])
+  const createExpense = async (data: CreateIncomeRequest) => {
+    return createMutation.mutateAsync(data)
+  }
+
+  const updateIncome = async (id: string, data: UpdateIncomeRequest) => {
+    return updateMutation.mutateAsync({ id, data })
+  }
+
+  const deleteIncome = async (id: string) => {
+    return deleteMutation.mutateAsync(id)
+  }
 
   return {
     incomes,
     loading,
-    error,
-    fetchIncomes,
-    fetchIncomesByDateRange,
-    createIncome,
+    error: error ? '収入の取得に失敗しました' : null,
+    fetchIncomes: invalidateIncomeRelated,
+    fetchIncomesByDateRange: invalidateIncomeRelated,
+    createIncome: createExpense,
     updateIncome,
     deleteIncome,
   }

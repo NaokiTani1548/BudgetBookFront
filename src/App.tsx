@@ -29,6 +29,9 @@ import {
   CameraAlt,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { queryClient } from './lib/queryClient'
 import theme from './theme'
 import { AuthProvider } from './contexts/AuthProvider'
 import { useAuth } from './hooks/useAuth'
@@ -340,13 +343,16 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   )
 }
