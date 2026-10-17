@@ -1,7 +1,9 @@
 import client from './client'
+import { config } from '../config'
+import { mockCategoryApi } from './mockApi'
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../types/category'
 
-export const categoryApi = {
+const realApi = {
   getAll: async (): Promise<Category[]> => {
     const response = await client.get('/categories')
     return response.data
@@ -21,3 +23,5 @@ export const categoryApi = {
     await client.delete(`/categories/${id}`)
   },
 }
+
+export const categoryApi = config.isMockMode ? mockCategoryApi : realApi

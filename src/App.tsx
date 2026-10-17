@@ -27,6 +27,7 @@ import {
   Repeat,
   Logout,
   CameraAlt,
+  BarChart,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -44,6 +45,7 @@ import DayDetailPage from './pages/DayDetailPage'
 import CategoryPage from './pages/CategoryPage'
 import RecurringExpensePage from './pages/RecurringExpensePage'
 import OcrPage from './pages/OcrPage'
+import StatisticsPage from './pages/StatisticsPage'
 
 const DRAWER_WIDTH = 260
 
@@ -53,6 +55,7 @@ const menuItems = [
   { path: '/ocr', label: 'レシート読取', icon: <CameraAlt />, emoji: '📸' },
   { path: '/recurring', label: '定期支出', icon: <Repeat />, emoji: '🔄' },
   { path: '/categories', label: 'カテゴリ', icon: <Category />, emoji: '🏷️' },
+  { path: '/statistics', label: '統計', icon: <BarChart />, emoji: '📊' },
 ]
 
 function Navigation() {
@@ -331,6 +334,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <RecurringExpensePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/statistics"
+            element={
+              <ProtectedRoute>
+                <StatisticsPage />
               </ProtectedRoute>
             }
           />

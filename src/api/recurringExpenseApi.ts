@@ -1,11 +1,13 @@
 import client from './client'
+import { config } from '../config'
+import { mockRecurringExpenseApi } from './mockApi'
 import type {
   RecurringExpense,
   CreateRecurringExpenseRequest,
   UpdateRecurringExpenseRequest,
 } from '../types/recurringExpense'
 
-export const recurringExpenseApi = {
+const realApi = {
   getAll: async (): Promise<RecurringExpense[]> => {
     const response = await client.get('/recurring-expenses')
     return response.data
@@ -30,3 +32,5 @@ export const recurringExpenseApi = {
     await client.delete(`/recurring-expenses/${id}`)
   },
 }
+
+export const recurringExpenseApi = config.isMockMode ? mockRecurringExpenseApi : realApi

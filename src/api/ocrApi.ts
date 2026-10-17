@@ -1,4 +1,6 @@
 import client from './client'
+import { config } from '../config'
+import { mockOcrApi } from './mockApi'
 
 export interface OcrItem {
   description: string
@@ -11,7 +13,7 @@ export interface OcrResponse {
   items: OcrItem[]
 }
 
-export const ocrApi = {
+const realApi = {
   analyze: async (image: File): Promise<OcrResponse> => {
     const formData = new FormData()
     formData.append('image', image)
@@ -20,8 +22,10 @@ export const ocrApi = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 30000, // 30秒タイムアウト
+      timeout: 30000,
     })
     return response.data
   },
 }
+
+export const ocrApi = config.isMockMode ? mockOcrApi : realApi

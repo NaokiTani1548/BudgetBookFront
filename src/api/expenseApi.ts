@@ -1,5 +1,8 @@
 import client from './client'
+import { config } from '../config'
+import { mockExpenseApi } from './mockApi'
 import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
+import type { PaginatedResponse, PaginationParams } from '../types/pagination'
 
 export interface ExpenseSearchParams {
   from?: string
@@ -8,9 +11,11 @@ export interface ExpenseSearchParams {
   keyword?: string
 }
 
-export const expenseApi = {
-  getAll: async (): Promise<Expense[]> => {
-    const response = await client.get<Expense[]>('/expenses')
+const realApi = {
+  getAll: async (params?: PaginationParams): Promise<PaginatedResponse<Expense>> => {
+    const response = await client.get<PaginatedResponse<Expense>>('/expenses', {
+      params: { limit: params?.limit ?? 20, offset: params?.offset ?? 0 },
+    })
     return response.data
   },
 
@@ -27,7 +32,6 @@ export const expenseApi = {
   },
 
   search: async (params: ExpenseSearchParams): Promise<Expense[]> => {
-    // 空文字のパラメータを除外
     const cleanParams: Record<string, string> = {}
     if (params.from) cleanParams.from = params.from
     if (params.to) cleanParams.to = params.to
@@ -59,3 +63,5 @@ export const expenseApi = {
     await client.delete(`/expenses/${id}`)
   },
 }
+
+export const expenseApi = config.isMockMode ? mockExpenseApi : realApi

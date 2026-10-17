@@ -1,21 +1,47 @@
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { expenseApi } from '../api/expenseApi'
 import { queryKeys } from '../lib/queryClient'
-import type { CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
+import type { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
+
+const PAGE_SIZE = 20
 
 export function useExpenses() {
   const queryClient = useQueryClient()
+  const [offset, setOffset] = useState(0)
+  const [accumulated, setAccumulated] = useState<Expense[]>([])
 
-  const { data: expenses = [], isLoading: loading } = useQuery({
-    queryKey: queryKeys.expenses.all,
-    queryFn: () => expenseApi.getAll(),
+  const { data, isLoading: loading } = useQuery({
+    queryKey: [...queryKeys.expenses.all, offset],
+    queryFn: () => expenseApi.getAll({ limit: PAGE_SIZE, offset }),
   })
 
-  const invalidateExpenseRelated = () => {
+  useEffect(() => {
+    if (!data) return
+    if (data.offset === 0) {
+      setAccumulated(data.items)
+    } else {
+      setAccumulated((prev) => {
+        const ids = new Set(prev.map((e) => e.id))
+        const newItems = data.items.filter((e) => !ids.has(e.id))
+        return [...prev, ...newItems]
+      })
+    }
+  }, [data])
+
+  const totalCount = data?.totalCount ?? accumulated.length
+  const hasMore = accumulated.length < totalCount
+
+  const loadMore = useCallback(() => {
+    setOffset((prev) => prev + PAGE_SIZE)
+  }, [])
+
+  const invalidateExpenseRelated = useCallback(() => {
+    setOffset(0)
     queryClient.invalidateQueries({ queryKey: ['expenses'] })
     queryClient.invalidateQueries({ queryKey: ['calendar'] })
     queryClient.invalidateQueries({ queryKey: queryKeys.summary.currentBalance })
-  }
+  }, [queryClient])
 
   const createMutation = useMutation({
     mutationFn: (data: CreateExpenseRequest) => expenseApi.create(data),
@@ -33,24 +59,15 @@ export function useExpenses() {
     onSuccess: invalidateExpenseRelated,
   })
 
-  const createExpense = async (data: CreateExpenseRequest) => {
-    return createMutation.mutateAsync(data)
-  }
-
-  const updateExpense = async (id: string, data: UpdateExpenseRequest) => {
-    return updateMutation.mutateAsync({ id, data })
-  }
-
-  const deleteExpense = async (id: string) => {
-    return deleteMutation.mutateAsync(id)
-  }
-
   return {
-    expenses,
+    expenses: accumulated,
     loading,
+    totalCount,
+    hasMore,
+    loadMore,
     fetchExpenses: invalidateExpenseRelated,
-    createExpense,
-    updateExpense,
-    deleteExpense,
+    createExpense: (data: CreateExpenseRequest) => createMutation.mutateAsync(data),
+    updateExpense: (id: string, data: UpdateExpenseRequest) => updateMutation.mutateAsync({ id, data }),
+    deleteExpense: (id: string) => deleteMutation.mutateAsync(id),
   }
 }

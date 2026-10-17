@@ -23,14 +23,16 @@ import { useNotification } from '../hooks/useNotification'
 import { queryKeys } from '../lib/queryClient'
 import ExpenseForm from '../components/expense/ExpenseForm'
 import ExpenseList from '../components/expense/ExpenseList'
+import ExpenseEditDialog from '../components/expense/ExpenseEditDialog'
 import IncomeForm from '../components/income/IncomeForm'
 import IncomeList from '../components/income/IncomeList'
+import IncomeEditDialog from '../components/income/IncomeEditDialog'
 import Loading from '../components/common/Loading'
 import Notification from '../components/common/Notification'
 import ConfirmDialog from '../components/common/ConfirmDialog'
-import type { CreateExpenseRequest } from '../types/expense'
+import type { CreateExpenseRequest, UpdateExpenseRequest } from '../types/expense'
 import type { Expense } from '../types/expense'
-import type { Income, CreateIncomeRequest } from '../types/income'
+import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
 
 export default function DayDetailPage() {
   const { date } = useParams<{ date: string }>()
@@ -42,6 +44,8 @@ export default function DayDetailPage() {
   const [tab, setTab] = useState<'expense' | 'income'>('expense')
   const [deleteExpenseTarget, setDeleteExpenseTarget] = useState<Expense | null>(null)
   const [deleteIncomeTarget, setDeleteIncomeTarget] = useState<Income | null>(null)
+  const [editExpenseTarget, setEditExpenseTarget] = useState<Expense | null>(null)
+  const [editIncomeTarget, setEditIncomeTarget] = useState<Income | null>(null)
 
   const { categories: expenseCategories, createCategory: createExpenseCategory } = useCategories('EXPENSE')
   const { categories: incomeCategories, createCategory: createIncomeCategory } = useCategories('INCOME')
@@ -110,6 +114,26 @@ export default function DayDetailPage() {
       invalidateRelated()
     },
     onError: () => showError('削除に失敗しました'),
+  })
+
+  const updateExpenseMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateExpenseRequest }) => expenseApi.update(id, data),
+    onSuccess: () => {
+      showSuccess('支出を更新しました')
+      setEditExpenseTarget(null)
+      invalidateRelated()
+    },
+    onError: () => showError('支出の更新に失敗しました'),
+  })
+
+  const updateIncomeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateIncomeRequest }) => incomeApi.update(id, data),
+    onSuccess: () => {
+      showSuccess('収入を更新しました')
+      setEditIncomeTarget(null)
+      invalidateRelated()
+    },
+    onError: () => showError('収入の更新に失敗しました'),
   })
 
   const handleCreateExpense = async (reqData: CreateExpenseRequest) => {
@@ -260,7 +284,7 @@ export default function DayDetailPage() {
         />
         <ExpenseList
         expenses={expenses}
-        onEdit={() => {}} // TODO: 編集機能
+        onEdit={(expense) => setEditExpenseTarget(expense)}
         onDelete={(id) => {
             const target = expenses.find((e) => e.id === id)
             if (target) setDeleteExpenseTarget(target)
@@ -278,7 +302,7 @@ export default function DayDetailPage() {
         />
         <IncomeList
         incomes={incomes}
-        onEdit={() => {}} // TODO: 編集機能
+        onEdit={(income) => setEditIncomeTarget(income)}
         onDelete={(id) => {
             const target = incomes.find((i) => i.id === id)
             if (target) setDeleteIncomeTarget(target)
@@ -287,6 +311,25 @@ export default function DayDetailPage() {
         />
     </>
     )}
+
+      {/* 編集ダイアログ */}
+      <ExpenseEditDialog
+        open={!!editExpenseTarget}
+        expense={editExpenseTarget}
+        categories={expenseCategories}
+        onClose={() => setEditExpenseTarget(null)}
+        onSubmit={(id, data) => updateExpenseMutation.mutate({ id, data })}
+        onCreateCategory={createExpenseCategory}
+      />
+
+      <IncomeEditDialog
+        open={!!editIncomeTarget}
+        income={editIncomeTarget}
+        categories={incomeCategories}
+        onClose={() => setEditIncomeTarget(null)}
+        onSubmit={(id, data) => updateIncomeMutation.mutate({ id, data })}
+        onCreateCategory={createIncomeCategory}
+      />
 
       {/* 削除確認ダイアログ */}
       <ConfirmDialog

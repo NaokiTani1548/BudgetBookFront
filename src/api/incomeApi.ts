@@ -1,9 +1,14 @@
 import client from './client'
+import { config } from '../config'
+import { mockIncomeApi } from './mockApi'
 import type { Income, CreateIncomeRequest, UpdateIncomeRequest } from '../types/income'
+import type { PaginatedResponse, PaginationParams } from '../types/pagination'
 
-export const incomeApi = {
-  getAll: async (): Promise<Income[]> => {
-    const response = await client.get('/incomes')
+const realApi = {
+  getAll: async (params?: PaginationParams): Promise<PaginatedResponse<Income>> => {
+    const response = await client.get<PaginatedResponse<Income>>('/incomes', {
+      params: { limit: params?.limit ?? 20, offset: params?.offset ?? 0 },
+    })
     return response.data
   },
 
@@ -38,3 +43,5 @@ export const incomeApi = {
     await client.delete(`/incomes/${id}`)
   },
 }
+
+export const incomeApi = config.isMockMode ? mockIncomeApi : realApi

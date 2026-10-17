@@ -2,15 +2,26 @@ import { useState, useCallback, type ReactNode } from 'react'
 import { AuthContext, TOKEN_KEY, USER_KEY } from './AuthContext'
 import type { AuthUser } from '../types/auth'
 import { isTokenExpired } from '../utils/authUtils'
+import { config } from '../config'
 
-// 初期状態を取得する関数（コンポーネント外で実行）
+const DEV_USER: AuthUser = {
+  userId: 'dev-user-001',
+  email: 'dev@example.com',
+  name: '開発ユーザー',
+}
+const DEV_TOKEN = 'dev-token'
+
 function getInitialAuthState(): { token: string | null; user: AuthUser | null } {
+  // 本番以外は自動ログイン
+  if (!config.isProduction) {
+    return { token: DEV_TOKEN, user: DEV_USER }
+  }
+
   const storedToken = localStorage.getItem(TOKEN_KEY)
   const storedUser = localStorage.getItem(USER_KEY)
 
   if (storedToken && storedUser) {
     if (isTokenExpired(storedToken)) {
-      // トークン期限切れ
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
       return { token: null, user: null }
@@ -28,7 +39,6 @@ function getInitialAuthState(): { token: string | null; user: AuthUser | null } 
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // useState の初期値として関数を渡す（遅延初期化）
   const [token, setToken] = useState<string | null>(() => getInitialAuthState().token)
   const [user, setUser] = useState<AuthUser | null>(() => getInitialAuthState().user)
 
@@ -52,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         isAuthenticated: !!token && !!user,
-        isLoading: false, // 同期的に初期化するのでloadingは不要
+        isLoading: false,
         login,
         logout,
       }}

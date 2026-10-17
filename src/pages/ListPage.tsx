@@ -34,8 +34,8 @@ export default function ListPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
-  const { expenses, loading: expenseLoading, createExpense, updateExpense, deleteExpense } = useExpenses()
-  const { incomes, loading: incomeLoading, createIncome, updateIncome, deleteIncome } = useIncomes()
+  const { expenses, loading: expenseLoading, totalCount: expenseTotalCount, hasMore: hasMoreExpenses, loadMore: loadMoreExpenses, createExpense, updateExpense, deleteExpense } = useExpenses()
+  const { incomes, loading: incomeLoading, totalCount: incomeTotalCount, hasMore: hasMoreIncomes, loadMore: loadMoreIncomes, createIncome, updateIncome, deleteIncome } = useIncomes()
   const { categories: expenseCategories, createCategory: createExpenseCategory } = useCategories('EXPENSE')
   const { categories: incomeCategories, createCategory: createIncomeCategory } = useCategories('INCOME')
   const { notification, showSuccess, showError, hideNotification } = useNotification()
@@ -202,8 +202,8 @@ export default function ListPage() {
             },
           }}
         >
-          <Tab label={`💸 支出 (${displayedExpenses.length})`} />
-          <Tab label={`💰 収入 (${incomes.length})`} />
+          <Tab label={`💸 支出 (${isSearching ? displayedExpenses.length : expenseTotalCount})`} />
+          <Tab label={`💰 収入 (${incomeTotalCount})`} />
         </Tabs>
 
         <Button
@@ -232,22 +232,40 @@ export default function ListPage() {
           {searchLoading ? (
             <Loading />
           ) : (
-            <ExpenseList
-              expenses={displayedExpenses}
-              onEdit={setEditingExpense}
-              onDelete={handleDeleteExpense}
-            />
+            <>
+              <ExpenseList
+                expenses={displayedExpenses}
+                onEdit={setEditingExpense}
+                onDelete={handleDeleteExpense}
+              />
+              {!isSearching && hasMoreExpenses && (
+                <Box sx={{ textAlign: 'center', mt: 2 }}>
+                  <Button onClick={loadMoreExpenses} variant="outlined" sx={{ borderRadius: 3 }}>
+                    もっと読み込む（{expenses.length} / {expenseTotalCount}件）
+                  </Button>
+                </Box>
+              )}
+            </>
           )}
         </>
       )}
 
       {/* 収入タブ */}
       {tabIndex === 1 && (
-        <IncomeList
-          incomes={incomes}
-          onEdit={setEditingIncome}
-          onDelete={handleDeleteIncome}
-        />
+        <>
+          <IncomeList
+            incomes={incomes}
+            onEdit={setEditingIncome}
+            onDelete={handleDeleteIncome}
+          />
+          {hasMoreIncomes && (
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button onClick={loadMoreIncomes} variant="outlined" sx={{ borderRadius: 3 }}>
+                もっと読み込む（{incomes.length} / {incomeTotalCount}件）
+              </Button>
+            </Box>
+          )}
+        </>
       )}
 
       {/* 支出作成モーダル */}

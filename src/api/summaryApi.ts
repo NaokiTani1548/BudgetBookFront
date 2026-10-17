@@ -1,7 +1,9 @@
 import client from './client'
+import { config } from '../config'
+import { mockSummaryApi } from './mockApi'
 import type { ForecastSummary } from '../types/summary'
 
-export const summaryApi = {
+const realApi = {
   getForecast: async (targetDate: string): Promise<ForecastSummary> => {
     const response = await client.get('/summary/forecast', {
       params: { targetDate },
@@ -17,3 +19,5 @@ export const summaryApi = {
     return response.data
   },
 }
+
+export const summaryApi = config.isMockMode ? mockSummaryApi : realApi

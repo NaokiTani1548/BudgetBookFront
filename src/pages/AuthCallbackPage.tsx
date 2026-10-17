@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Container, Paper, Typography, CircularProgress } from '@mui/material'
 import { useAuth } from '../hooks/useAuth'
-import { config } from '../config'
-import { authApi } from '../api/authApi'
 
 export default function AuthCallbackPage() {
   const [searchParams] = useSearchParams()
@@ -12,41 +10,18 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const handleCallback = () => {
-      // URLパラメータから認証情報を取得
-      const token = searchParams.get('token')
-      const userId = searchParams.get('userId')
-      const email = searchParams.get('email')
-      const name = searchParams.get('name')
-      if (config.isMockMode || searchParams.get('mock') === 'true') {
-        const mockUser = authApi.mockLogin()
-        login(mockUser.token, {
-          userId: mockUser.userId,
-          email: mockUser.email,
-          name: mockUser.name,
-        })
-        navigate('/calendar', { replace: true })
-        return
-      }
+    const token = searchParams.get('token')
+    const userId = searchParams.get('userId')
+    const email = searchParams.get('email')
+    const name = searchParams.get('name')
 
-
-      if (!token || !userId || !email || !name) {
-        setError('認証情報が不完全です')
-        return
-      }
-
-      // 認証情報を保存
-      login(token, {
-        userId,
-        email,
-        name,
-      })
-
-      // メインページにリダイレクト
-      navigate('/calendar', { replace: true })
+    if (!token || !userId || !email || !name) {
+      setError('認証情報が不完全です')
+      return
     }
 
-    handleCallback()
+    login(token, { userId, email, name })
+    navigate('/calendar', { replace: true })
   }, [searchParams, navigate, login])
 
   if (error) {
