@@ -89,10 +89,9 @@ export default function StatisticsPage() {
   const from = startMonth.startOf('month').format('YYYY-MM-DD')
   const to = endMonth.endOf('month').format('YYYY-MM-DD')
 
-  const today = dayjs()
-  const currentMonthKey = today.format('YYYY-MM')
+  const currentMonthKey = dayjs().format('YYYY-MM')
 
-  // Determine which months need balance data (up to current month)
+  // Only show months up to current month
   const visibleMonths = useMemo(
     () => months.filter((m) => m.format('YYYY-MM') <= currentMonthKey),
     [months, currentMonthKey]
@@ -101,23 +100,12 @@ export default function StatisticsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['statistics', from, to],
     queryFn: async () => {
-      // Fetch balance for each visible month's end date (or today for current month)
-      const todayStr = today.format('YYYY-MM-DD')
-      const balanceDates = visibleMonths.map((m) => {
-        const endOfMonth = m.endOf('month').format('YYYY-MM-DD')
-        return endOfMonth <= todayStr ? endOfMonth : todayStr
-      })
-
-      const [expenses, incomes, ...balanceResponses] = await Promise.all([
+      const [expenses, incomes, balance] = await Promise.all([
         expenseApi.getByDateRange(from, to),
         incomeApi.getByDateRange(from, to),
-        ...balanceDates.map((date) => summaryApi.getForecast(date)),
+        summaryApi.getCurrentBalance(),
       ])
-      return {
-        expenses,
-        incomes,
-        monthBalances: balanceResponses.map((r) => r.currentBalance),
-      }
+      return { expenses, incomes, balance }
     },
   })
 
@@ -130,8 +118,7 @@ export default function StatisticsPage() {
 
   const expenses = data?.expenses ?? []
   const incomes = data?.incomes ?? []
-  const balances = data?.monthBalances ?? []
-  const currentBalance = balances[balances.length - 1] ?? 0
+  const currentBalance = data?.balance?.currentBalance ?? 0
 
   // Group by month (only visible months)
   const visibleMonthlyData = visibleMonths.map((m) => {
@@ -150,6 +137,16 @@ export default function StatisticsPage() {
       incomes: monthIncomes,
     }
   })
+
+  // Build balance per month-end by working backwards from current balance
+  const balances: number[] = new Array(visibleMonthlyData.length).fill(0)
+  const lastIndex = visibleMonthlyData.length - 1
+  if (lastIndex >= 0) {
+    balances[lastIndex] = currentBalance
+    for (let i = lastIndex - 1; i >= 0; i--) {
+      balances[i] = balances[i + 1] - visibleMonthlyData[i + 1].net
+    }
+  }
 
   // Category breakdown for expenses
   const categoryExpenseMap = new Map<string, number>()
