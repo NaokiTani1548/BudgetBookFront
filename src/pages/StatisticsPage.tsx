@@ -110,7 +110,7 @@ export default function StatisticsPage() {
 
   const expenses = data?.expenses ?? []
   const incomes = data?.incomes ?? []
-  const currentBalance = data?.balance?.forecastBalance ?? 0
+  const currentBalance = data?.balance?.currentBalance ?? 0
 
   // Group by month
   const monthlyData = months.map((m) => {
@@ -130,20 +130,20 @@ export default function StatisticsPage() {
     }
   })
 
-  // Estimate balance per month: we know current month's end balance
-  const currentMonthIndex = monthlyData.findIndex(
-    (m) => m.key === dayjs().format('YYYY-MM')
+  // Filter out future months (only show up to current month)
+  const currentMonthKey = dayjs().format('YYYY-MM')
+  const visibleMonthlyData = monthlyData.filter((m) => m.key <= currentMonthKey)
+
+  // Estimate balance per month: we know current month's balance
+  const currentMonthIndex = visibleMonthlyData.findIndex(
+    (m) => m.key === currentMonthKey
   )
-  const balances: number[] = new Array(monthlyData.length).fill(0)
+  const balances: number[] = new Array(visibleMonthlyData.length).fill(0)
   if (currentMonthIndex >= 0) {
     balances[currentMonthIndex] = currentBalance
     // Go backwards
     for (let i = currentMonthIndex - 1; i >= 0; i--) {
-      balances[i] = balances[i + 1] - monthlyData[i + 1].net
-    }
-    // Go forwards
-    for (let i = currentMonthIndex + 1; i < monthlyData.length; i++) {
-      balances[i] = balances[i - 1] + monthlyData[i].net
+      balances[i] = balances[i + 1] - visibleMonthlyData[i + 1].net
     }
   }
 
@@ -162,7 +162,7 @@ export default function StatisticsPage() {
     ? allCategoryNames
     : allCategoryNames.filter((name) => checkedCategories.has(name))
   const categoryMonthlyData = displayCategories.map((cat) => {
-    return monthlyData.map((m) =>
+    return visibleMonthlyData.map((m) =>
       m.expenses
         .filter((e) => (e.categoryName || '未分類') === cat)
         .reduce((s, e) => s + e.amount, 0)
@@ -196,7 +196,7 @@ export default function StatisticsPage() {
   const isCategoryChecked = (name: string) =>
     isAllChecked || checkedCategories.has(name)
 
-  const monthLabels = monthlyData.map((m) => m.label)
+  const monthLabels = visibleMonthlyData.map((m) => m.label)
   const totalExpenseSum = expenses.reduce((s, e) => s + e.amount, 0)
   const totalIncomeSum = incomes.reduce((s, i) => s + i.amount, 0)
 
@@ -282,14 +282,14 @@ export default function StatisticsPage() {
               datasets: [
                 {
                   label: '収入',
-                  data: monthlyData.map((m) => m.totalIncome),
+                  data: visibleMonthlyData.map((m) => m.totalIncome),
                   backgroundColor: 'rgba(129, 199, 132, 0.7)',
                   borderColor: '#4CAF50',
                   borderWidth: 1,
                 },
                 {
                   label: '支出',
-                  data: monthlyData.map((m) => m.totalExpense),
+                  data: visibleMonthlyData.map((m) => m.totalExpense),
                   backgroundColor: 'rgba(229, 115, 115, 0.7)',
                   borderColor: '#F44336',
                   borderWidth: 1,
@@ -313,11 +313,11 @@ export default function StatisticsPage() {
               datasets: [
                 {
                   label: '収支差額',
-                  data: monthlyData.map((m) => m.net),
-                  backgroundColor: monthlyData.map((m) =>
+                  data: visibleMonthlyData.map((m) => m.net),
+                  backgroundColor: visibleMonthlyData.map((m) =>
                     m.net >= 0 ? 'rgba(129, 199, 132, 0.7)' : 'rgba(229, 115, 115, 0.7)'
                   ),
-                  borderColor: monthlyData.map((m) =>
+                  borderColor: visibleMonthlyData.map((m) =>
                     m.net >= 0 ? '#4CAF50' : '#F44336'
                   ),
                   borderWidth: 1,
