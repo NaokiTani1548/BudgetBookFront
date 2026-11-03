@@ -121,32 +121,41 @@ export default function StatisticsPage() {
   const currentBalance = data?.balance?.currentBalance ?? 0
 
   // Group by month (only visible months)
+  const todayStr = dayjs().format('YYYY-MM-DD')
   const visibleMonthlyData = visibleMonths.map((m) => {
     const key = m.format('YYYY-MM')
+    const isCurrentMonth = key === currentMonthKey
     const monthExpenses = expenses.filter((e) => e.expenseDate.startsWith(key))
     const monthIncomes = incomes.filter((i) => i.incomeDate.startsWith(key))
     const totalExpense = monthExpenses.reduce((s, e) => s + e.amount, 0)
     const totalIncome = monthIncomes.reduce((s, i) => s + i.amount, 0)
+    // For balance calculation: current month only counts transactions up to today
+    const balanceExpense = isCurrentMonth
+      ? monthExpenses.filter((e) => e.expenseDate <= todayStr).reduce((s, e) => s + e.amount, 0)
+      : totalExpense
+    const balanceIncome = isCurrentMonth
+      ? monthIncomes.filter((i) => i.incomeDate <= todayStr).reduce((s, i) => s + i.amount, 0)
+      : totalIncome
     return {
       label: m.format('M月'),
       key,
       totalExpense,
       totalIncome,
       net: totalIncome - totalExpense,
+      balanceNet: balanceIncome - balanceExpense,
       expenses: monthExpenses,
       incomes: monthIncomes,
     }
   })
 
-  // Build balance per month-end by working backwards from current balance
-  const balances: number[] = new Array(visibleMonthlyData.length).fill(0)
-  const lastIndex = visibleMonthlyData.length - 1
-  if (lastIndex >= 0) {
-    balances[lastIndex] = currentBalance
-    for (let i = lastIndex - 1; i >= 0; i--) {
-      balances[i] = balances[i + 1] - visibleMonthlyData[i + 1].net
-    }
-  }
+  // Build balance per month-end by accumulating net from the first month
+  const totalBalanceNet = visibleMonthlyData.reduce((s, m) => s + m.balanceNet, 0)
+  const baseBalance = currentBalance - totalBalanceNet
+  const balances = visibleMonthlyData.reduce<number[]>((acc, m) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : baseBalance
+    acc.push(prev + m.balanceNet)
+    return acc
+  }, [])
 
   // Category breakdown for expenses
   const categoryExpenseMap = new Map<string, number>()
