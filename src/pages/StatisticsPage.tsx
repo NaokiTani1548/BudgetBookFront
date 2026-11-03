@@ -89,15 +89,35 @@ export default function StatisticsPage() {
   const from = startMonth.startOf('month').format('YYYY-MM-DD')
   const to = endMonth.endOf('month').format('YYYY-MM-DD')
 
+  const today = dayjs()
+  const currentMonthKey = today.format('YYYY-MM')
+
+  // Determine which months need balance data (up to current month)
+  const visibleMonths = useMemo(
+    () => months.filter((m) => m.format('YYYY-MM') <= currentMonthKey),
+    [months, currentMonthKey]
+  )
+
   const { data, isLoading } = useQuery({
     queryKey: ['statistics', from, to],
     queryFn: async () => {
-      const [expenses, incomes, balance] = await Promise.all([
+      // Fetch balance for each visible month's end date (or today for current month)
+      const todayStr = today.format('YYYY-MM-DD')
+      const balanceDates = visibleMonths.map((m) => {
+        const endOfMonth = m.endOf('month').format('YYYY-MM-DD')
+        return endOfMonth <= todayStr ? endOfMonth : todayStr
+      })
+
+      const [expenses, incomes, ...balanceResponses] = await Promise.all([
         expenseApi.getByDateRange(from, to),
         incomeApi.getByDateRange(from, to),
-        summaryApi.getCurrentBalance(),
+        ...balanceDates.map((date) => summaryApi.getForecast(date)),
       ])
-      return { expenses, incomes, balance }
+      return {
+        expenses,
+        incomes,
+        monthBalances: balanceResponses.map((r) => r.currentBalance),
+      }
     },
   })
 
@@ -110,10 +130,11 @@ export default function StatisticsPage() {
 
   const expenses = data?.expenses ?? []
   const incomes = data?.incomes ?? []
-  const currentBalance = data?.balance?.currentBalance ?? 0
+  const balances = data?.monthBalances ?? []
+  const currentBalance = balances[balances.length - 1] ?? 0
 
-  // Group by month
-  const monthlyData = months.map((m) => {
+  // Group by month (only visible months)
+  const visibleMonthlyData = visibleMonths.map((m) => {
     const key = m.format('YYYY-MM')
     const monthExpenses = expenses.filter((e) => e.expenseDate.startsWith(key))
     const monthIncomes = incomes.filter((i) => i.incomeDate.startsWith(key))
@@ -129,23 +150,6 @@ export default function StatisticsPage() {
       incomes: monthIncomes,
     }
   })
-
-  // Filter out future months (only show up to current month)
-  const currentMonthKey = dayjs().format('YYYY-MM')
-  const visibleMonthlyData = monthlyData.filter((m) => m.key <= currentMonthKey)
-
-  // Estimate balance per month: we know current month's balance
-  const currentMonthIndex = visibleMonthlyData.findIndex(
-    (m) => m.key === currentMonthKey
-  )
-  const balances: number[] = new Array(visibleMonthlyData.length).fill(0)
-  if (currentMonthIndex >= 0) {
-    balances[currentMonthIndex] = currentBalance
-    // Go backwards
-    for (let i = currentMonthIndex - 1; i >= 0; i--) {
-      balances[i] = balances[i + 1] - visibleMonthlyData[i + 1].net
-    }
-  }
 
   // Category breakdown for expenses
   const categoryExpenseMap = new Map<string, number>()
@@ -332,7 +336,7 @@ export default function StatisticsPage() {
       {/* Chart 3: Balance Trend */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          資産残高の推移（推定）
+          資産残高の推移
         </Typography>
         <Box sx={{ height: { xs: 250, md: 350 } }}>
           <Line
