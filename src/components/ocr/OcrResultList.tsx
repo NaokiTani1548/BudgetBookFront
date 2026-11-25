@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Box,
   Paper,
@@ -20,6 +20,8 @@ import type { OcrItem } from '../../api/ocrApi'
 import type { Category, CreateCategoryRequest } from '../../types/category'
 import CategorySelectWithCreate from '../category/CategorySelectWithCreate'
 
+const VALID_PAYMENT_METHODS = ['CASH', 'CREDIT_CARD']
+
 export interface OcrItemWithMeta extends OcrItem {
   id: string
   checked: boolean
@@ -31,9 +33,18 @@ interface Props {
   items: OcrItem[]
   categories: Category[]
   onCreateCategory: (data: CreateCategoryRequest) => Promise<Category>
-  onSubmit: (items: OcrItemWithMeta[]) => void
+  /**
+   * 登録処理。登録に成功した項目の id 配列を返すと、それらを一覧から取り除く
+   */
+  onSubmit: (items: OcrItemWithMeta[]) => void | Promise<void | string[]>
   onCancel: () => void
   submitting: boolean
+  /** 見出し（デフォルト: 読み取り結果） */
+  title?: string
+  /** 各項目の初期チェック状態（デフォルト: すべてチェック） */
+  initialChecked?: (item: OcrItem) => boolean
+  /** 各項目の下に追加表示する内容 */
+  renderItemExtra?: (item: OcrItemWithMeta) => ReactNode
 }
 
 export default function OcrResultList({
@@ -43,6 +54,9 @@ export default function OcrResultList({
   onSubmit,
   onCancel,
   submitting,
+  title = '📝 読み取り結果',
+  initialChecked,
+  renderItemExtra,
 }: Props) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -50,8 +64,10 @@ export default function OcrResultList({
   const [ocrItems, setOcrItems] = useState<OcrItemWithMeta[]>(() =>
     items.map((item, index) => ({
       ...item,
+      // 支払方法が読み取れなかった・不明な値の場合は現金をデフォルトにする
+      paymentMethod: VALID_PAYMENT_METHODS.includes(item.paymentMethod) ? item.paymentMethod : 'CASH',
       id: `ocr-${index}-${Date.now()}`,
-      checked: true,
+      checked: initialChecked ? initialChecked(item) : true,
       categoryId: categories.length > 0 ? categories[0].id : '',
       isEditing: false,
     }))
@@ -117,7 +133,7 @@ export default function OcrResultList({
     )
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // チェックされている項目を取得
     const checkedItems = ocrItems.filter((item) => item.checked)
 
@@ -131,7 +147,11 @@ export default function OcrResultList({
     console.log('登録する項目:', checkedItems.length, '件')
     console.log('登録データ:', checkedItems)
 
-    onSubmit(checkedItems)
+    const succeededIds = await onSubmit(checkedItems)
+    if (Array.isArray(succeededIds) && succeededIds.length > 0) {
+      const removed = new Set(succeededIds)
+      setOcrItems((prev) => prev.filter((item) => !removed.has(item.id)))
+    }
   }
 
   const checkedCount = ocrItems.filter((item) => item.checked).length
@@ -150,7 +170,7 @@ export default function OcrResultList({
     <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3, borderRadius: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-          📝 読み取り結果（{ocrItems.length}件）
+          {title}（{ocrItems.length}件）
         </Typography>
         <IconButton onClick={onCancel} size="small">
           <Close />
@@ -298,6 +318,7 @@ export default function OcrResultList({
                     />
                   </>
                 )}
+                {renderItemExtra?.(item)}
               </Box>
             </Box>
           </Box>

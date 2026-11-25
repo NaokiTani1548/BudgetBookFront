@@ -28,6 +28,7 @@ import {
   Logout,
   CameraAlt,
   BarChart,
+  Email,
 } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -46,6 +47,8 @@ import CategoryPage from './pages/CategoryPage'
 import RecurringExpensePage from './pages/RecurringExpensePage'
 import OcrPage from './pages/OcrPage'
 import StatisticsPage from './pages/StatisticsPage'
+import MailPage from './pages/MailPage'
+import MicrosoftCallbackPage from './pages/MicrosoftCallbackPage'
 
 const DRAWER_WIDTH = 260
 
@@ -53,6 +56,7 @@ const menuItems = [
   { path: '/calendar', label: 'カレンダー', icon: <CalendarMonth />, emoji: '📅' },
   { path: '/list', label: '収支リスト', icon: <ListIcon />, emoji: '📋' },
   { path: '/ocr', label: 'レシート読取', icon: <CameraAlt />, emoji: '📸' },
+  { path: '/mail', label: 'メール読取', icon: <Email />, emoji: '📧' },
   { path: '/recurring', label: '定期支出', icon: <Repeat />, emoji: '🔄' },
   { path: '/categories', label: 'カテゴリ', icon: <Category />, emoji: '🏷️' },
   { path: '/statistics', label: '統計', icon: <BarChart />, emoji: '📊' },
@@ -281,6 +285,8 @@ function AppContent() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          {/* Microsoft連携のコールバック（JWTなしでも表示する） */}
+          <Route path="/microsoft/callback" element={<MicrosoftCallbackPage />} />
           <Route
             path="/"
             element={
@@ -310,6 +316,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <OcrPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mail"
+            element={
+              <ProtectedRoute>
+                <MailPage />
               </ProtectedRoute>
             }
           />

@@ -298,3 +298,19 @@ export const mockOcrApi = {
     }
   },
 }
+
+// --- Mail (SMBC) ---
+export const mockMailApi = {
+  getMicrosoftAuthUrl: async (): Promise<{ url: string }> => {
+    await delay()
+    return { url: '/microsoft/callback?status=success' }
+  },
+  getSmbcUsages: async (start: string, end: string): Promise<OcrResponse> => {
+    await delay(800)
+    const items = [
+      { description: 'UMIE MOSAIC', amount: 2968, expenseDate: start, paymentMethod: 'CREDIT_CARD' },
+      { description: 'AMAZON.CO.JP', amount: 1580, expenseDate: end, paymentMethod: 'CREDIT_CARD' },
+    ]
+    return { items: items.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate)) }
+  },
+}
