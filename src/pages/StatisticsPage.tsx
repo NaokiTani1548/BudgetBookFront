@@ -467,7 +467,7 @@ export default function StatisticsPage() {
                     tension: 0.3,
                     pointRadius: 4,
                     pointBackgroundColor: '#3F51B5',
-                    yAxisID: 'y',
+                    yAxisID: 'y1',
                   },
                   {
                     type: 'bar' as const,
@@ -476,7 +476,7 @@ export default function StatisticsPage() {
                     backgroundColor: 'rgba(121, 134, 203, 0.6)',
                     borderColor: '#7986CB',
                     borderWidth: 1,
-                    yAxisID: 'y1',
+                    yAxisID: 'y',
                   },
                 ],
               }}
@@ -486,14 +486,14 @@ export default function StatisticsPage() {
                   y: {
                     position: 'left',
                     beginAtZero: true,
-                    title: { display: !isMobile, text: '累計' },
+                    title: { display: !isMobile, text: '月間' },
                     ticks: { callback: (value: string | number) => formatCompact(Number(value)) },
                   },
                   y1: {
                     position: 'right',
                     beginAtZero: true,
                     grid: { drawOnChartArea: false },
-                    title: { display: !isMobile, text: '月間' },
+                    title: { display: !isMobile, text: '累計' },
                     ticks: { callback: (value: string | number) => formatCompact(Number(value)) },
                   },
                 },
