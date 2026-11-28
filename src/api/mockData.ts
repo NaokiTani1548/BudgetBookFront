@@ -14,6 +14,7 @@ export const mockCategories: Category[] = [
   { id: 'cat-e6', name: '娯楽', type: 'EXPENSE', color: '#E91E63', sortOrder: 6 },
   { id: 'cat-e7', name: '通信費', type: 'EXPENSE', color: '#00BCD4', sortOrder: 7 },
   { id: 'cat-e8', name: '医療費', type: 'EXPENSE', color: '#673AB7', sortOrder: 8 },
+  { id: 'cat-e9', name: '投資', type: 'EXPENSE', color: '#3F51B5', sortOrder: 9 },
   { id: 'cat-i1', name: '給与', type: 'INCOME', color: '#4CAF50', sortOrder: 1 },
   { id: 'cat-i2', name: '副業', type: 'INCOME', color: '#2196F3', sortOrder: 2 },
   { id: 'cat-i3', name: '投資収益', type: 'INCOME', color: '#FF9800', sortOrder: 3 },
@@ -33,6 +34,7 @@ function generateExpenses(): Expense[] {
     'cat-e6': ['映画', 'ゲーム', '書籍', 'サブスク'],
     'cat-e7': ['携帯代', 'インターネット'],
     'cat-e8': ['病院', '薬局'],
+    'cat-e9': ['つみたてNISA', '個別株'],
   }
   const amounts: Record<string, [number, number]> = {
     'cat-e1': [300, 5000],
@@ -43,6 +45,7 @@ function generateExpenses(): Expense[] {
     'cat-e6': [500, 5000],
     'cat-e7': [3000, 8000],
     'cat-e8': [1000, 10000],
+    'cat-e9': [10000, 50000],
   }
 
   let id = 1
@@ -68,7 +71,7 @@ function generateExpenses(): Expense[] {
       })
     }
     // 他カテゴリ: 1-3件/月
-    for (const catId of ['cat-e2', 'cat-e3', 'cat-e4', 'cat-e5', 'cat-e6', 'cat-e7', 'cat-e8']) {
+    for (const catId of ['cat-e2', 'cat-e3', 'cat-e4', 'cat-e5', 'cat-e6', 'cat-e7', 'cat-e8', 'cat-e9']) {
       const count = catId === 'cat-e3' ? 1 : 1 + Math.floor(Math.random() * 3)
       const cat = mockCategories.find((c) => c.id === catId)!
       const [minAmt, maxAmt] = amounts[catId]

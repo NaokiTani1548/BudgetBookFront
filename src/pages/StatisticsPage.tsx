@@ -29,8 +29,10 @@ import {
   Tooltip,
   Legend,
   Filler,
+  BarController,
+  LineController,
 } from 'chart.js'
-import { Bar, Line, Doughnut } from 'react-chartjs-2'
+import { Bar, Line, Doughnut, Chart } from 'react-chartjs-2'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { expenseApi } from '../api/expenseApi'
@@ -39,6 +41,7 @@ import { summaryApi } from '../api/summaryApi'
 import { recurringExpenseApi } from '../api/recurringExpenseApi'
 import { queryKeys } from '../lib/queryClient'
 import Loading from '../components/common/Loading'
+import { useCategories } from '../hooks/useCategories'
 
 ChartJS.register(
   CategoryScale,
@@ -50,7 +53,14 @@ ChartJS.register(
   Tooltip,
   Legend,
   Filler,
+  BarController,
+  LineController,
 )
+
+/** 投資額（元金）として集計する支出カテゴリ名（完全一致） */
+const INVESTMENT_CATEGORY_NAME = '投資'
+/** 総投資額の集計開始日（全期間を対象にするための十分に古い日付） */
+const INVESTMENT_FROM = '2000-01-01'
 
 const COLORS = [
   '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
@@ -112,6 +122,23 @@ export default function StatisticsPage() {
   const { data: recurringExpenses = [] } = useQuery({
     queryKey: queryKeys.recurringExpenses,
     queryFn: () => recurringExpenseApi.getAll(),
+  })
+
+  // 「投資」カテゴリの支出を全期間分取得（総投資額・累計の算出用）
+  const { categories: expenseCategories } = useCategories('EXPENSE')
+  const investmentCategoryId = expenseCategories.find(
+    (c) => c.name === INVESTMENT_CATEGORY_NAME
+  )?.id
+  const todayKey = dayjs().format('YYYY-MM-DD')
+  const { data: allInvestments = [], isLoading: investmentLoading } = useQuery({
+    queryKey: queryKeys.expenses.search({
+      categoryId: investmentCategoryId ?? '',
+      from: INVESTMENT_FROM,
+      to: todayKey,
+    }),
+    queryFn: () =>
+      expenseApi.search({ categoryId: investmentCategoryId, from: INVESTMENT_FROM, to: todayKey }),
+    enabled: !!investmentCategoryId,
   })
 
   if (isLoading) return <Loading />
@@ -209,6 +236,27 @@ export default function StatisticsPage() {
   const monthLabels = visibleMonthlyData.map((m) => m.label)
   const totalExpenseSum = expenses.reduce((s, e) => s + e.amount, 0)
   const totalIncomeSum = incomes.reduce((s, i) => s + i.amount, 0)
+
+  // 投資額（元金）の集計。今日までの実績のみを対象にする
+  const investments = allInvestments.filter(
+    (e) => e.categoryName === INVESTMENT_CATEGORY_NAME && e.expenseDate <= todayStr
+  )
+  const totalInvestment = investments.reduce((s, e) => s + e.amount, 0)
+  const firstMonthKey = visibleMonthlyData[0]?.key ?? ''
+  const investmentBeforePeriod = investments
+    .filter((e) => e.expenseDate.slice(0, 7) < firstMonthKey)
+    .reduce((s, e) => s + e.amount, 0)
+  const monthlyInvestments = visibleMonthlyData.map((m) =>
+    investments
+      .filter((e) => e.expenseDate.startsWith(m.key))
+      .reduce((s, e) => s + e.amount, 0)
+  )
+  const cumulativeInvestments = monthlyInvestments.reduce<number[]>((acc, amount) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : investmentBeforePeriod
+    acc.push(prev + amount)
+    return acc
+  }, [])
+  const periodInvestment = monthlyInvestments.reduce((s, a) => s + a, 0)
 
   const chartOptions = {
     responsive: true,
@@ -370,6 +418,89 @@ export default function StatisticsPage() {
             }}
           />
         </Box>
+      </Paper>
+
+      {/* Chart: Investment Trend */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          投資額（元金）の推移
+        </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            gap: 2,
+            mb: 2,
+          }}
+        >
+          <Box sx={{ p: 2, borderRadius: 2, backgroundColor: 'rgba(63, 81, 181, 0.06)', textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary">総投資額（元金・今日まで）</Typography>
+            <Typography variant="h5" sx={{ color: '#3F51B5', fontWeight: 700 }}>
+              {investmentLoading ? '...' : formatCurrency(totalInvestment)}
+            </Typography>
+          </Box>
+          <Box sx={{ p: 2, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.03)', textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary">{year}年の投資額</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {investmentLoading ? '...' : formatCurrency(periodInvestment)}
+            </Typography>
+          </Box>
+        </Box>
+        {!investmentCategoryId ? (
+          <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+            「{INVESTMENT_CATEGORY_NAME}」カテゴリがありません。支出カテゴリに「{INVESTMENT_CATEGORY_NAME}」を作成して登録すると表示されます
+          </Typography>
+        ) : (
+          <Box sx={{ height: { xs: 250, md: 350 } }}>
+            <Chart
+              type="bar"
+              data={{
+                labels: monthLabels,
+                datasets: [
+                  {
+                    type: 'line' as const,
+                    label: '累計投資額',
+                    data: cumulativeInvestments,
+                    borderColor: '#3F51B5',
+                    backgroundColor: 'rgba(63, 81, 181, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3F51B5',
+                    yAxisID: 'y',
+                  },
+                  {
+                    type: 'bar' as const,
+                    label: '月間投資額',
+                    data: monthlyInvestments,
+                    backgroundColor: 'rgba(121, 134, 203, 0.6)',
+                    borderColor: '#7986CB',
+                    borderWidth: 1,
+                    yAxisID: 'y1',
+                  },
+                ],
+              }}
+              options={{
+                ...chartOptions,
+                scales: {
+                  y: {
+                    position: 'left',
+                    beginAtZero: true,
+                    title: { display: !isMobile, text: '累計' },
+                    ticks: { callback: (value: string | number) => formatCompact(Number(value)) },
+                  },
+                  y1: {
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false },
+                    title: { display: !isMobile, text: '月間' },
+                    ticks: { callback: (value: string | number) => formatCompact(Number(value)) },
+                  },
+                },
+              }}
+            />
+          </Box>
+        )}
       </Paper>
 
       {/* Chart 4: Category Expense Bar with Checkboxes */}
