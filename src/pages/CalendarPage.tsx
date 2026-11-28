@@ -96,7 +96,7 @@ export default function CalendarPage() {
         )}
       </Box>
 
-      {/* 現在の総資産 */}
+      {/* 現在の残高 */}
       <BalanceSummary summary={summary} loading={balanceLoading} />
 
       {/* 月間サマリー */}

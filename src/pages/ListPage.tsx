@@ -182,7 +182,7 @@ export default function ListPage() {
         </Typography>
       </Box>
 
-      {/* 現在の総資産 */}
+      {/* 現在の残高 */}
       <BalanceSummary summary={summary} loading={balanceLoading} />
 
       {/* タブ + 新規作成ボタン */}

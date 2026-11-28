@@ -1,13 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Box,
   Typography,
   IconButton,
   Paper,
+  Popover,
+  Button,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import { ChevronLeft, ChevronRight } from '@mui/icons-material'
+import { ChevronLeft, ChevronRight, ArrowDropDown } from '@mui/icons-material'
 import dayjs, { Dayjs } from 'dayjs'
 import type { Expense } from '../../types/expense'
 import type { Income } from '../../types/income'
@@ -32,6 +34,22 @@ export default function MonthCalendar({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const weekDays = ['日', '月', '火', '水', '木', '金', '土']
+
+  // 月選択ポップオーバー
+  const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null)
+  const [pickerYear, setPickerYear] = useState(currentMonth.year())
+
+  const openPicker = (e: React.MouseEvent<HTMLElement>) => {
+    setPickerYear(currentMonth.year())
+    setPickerAnchor(e.currentTarget)
+  }
+
+  const closePicker = () => setPickerAnchor(null)
+
+  const selectMonth = (year: number, month: number) => {
+    onMonthChange(dayjs(new Date(year, month, 1)))
+    closePicker()
+  }
 
   const calendarDays = useMemo(() => {
     const startOfMonth = currentMonth.startOf('month')
@@ -92,13 +110,66 @@ export default function MonthCalendar({
         <IconButton onClick={() => onMonthChange(currentMonth.subtract(1, 'month'))}>
           <ChevronLeft />
         </IconButton>
-        <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 600 }}>
-          {currentMonth.format('YYYY年 M月')}
-        </Typography>
+        <Button
+          onClick={openPicker}
+          endIcon={<ArrowDropDown />}
+          sx={{ color: 'text.primary', borderRadius: 2, px: 1.5 }}
+        >
+          <Typography variant={isMobile ? 'h6' : 'h5'} component="span" sx={{ fontWeight: 600 }}>
+            {currentMonth.format('YYYY年 M月')}
+          </Typography>
+        </Button>
         <IconButton onClick={() => onMonthChange(currentMonth.add(1, 'month'))}>
           <ChevronRight />
         </IconButton>
       </Box>
+
+      <Popover
+        open={Boolean(pickerAnchor)}
+        anchorEl={pickerAnchor}
+        onClose={closePicker}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+        slotProps={{ paper: { sx: { p: 2, borderRadius: 3, width: 280 } } }}
+      >
+        {/* 年の切り替え */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <IconButton size="small" onClick={() => setPickerYear((y) => y - 1)}>
+            <ChevronLeft />
+          </IconButton>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {pickerYear}年
+          </Typography>
+          <IconButton size="small" onClick={() => setPickerYear((y) => y + 1)}>
+            <ChevronRight />
+          </IconButton>
+        </Box>
+
+        {/* 月の選択 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+          {Array.from({ length: 12 }, (_, m) => {
+            const isSelected = pickerYear === currentMonth.year() && m === currentMonth.month()
+            const isThisMonth = pickerYear === dayjs().year() && m === dayjs().month()
+            return (
+              <Button
+                key={m}
+                size="small"
+                variant={isSelected ? 'contained' : isThisMonth ? 'outlined' : 'text'}
+                onClick={() => selectMonth(pickerYear, m)}
+                sx={{ minWidth: 0, borderRadius: 2 }}
+              >
+                {m + 1}月
+              </Button>
+            )
+          })}
+        </Box>
+
+        <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button size="small" onClick={() => selectMonth(dayjs().year(), dayjs().month())}>
+            今月
+          </Button>
+        </Box>
+      </Popover>
 
       {/* 曜日ヘッダー */}
       <Box sx={{ display: 'flex', mb: 1 }}>

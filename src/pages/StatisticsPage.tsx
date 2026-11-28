@@ -737,6 +737,54 @@ export default function StatisticsPage() {
           )}
         </Paper>
       </Box>
+
+      {/* Total Assets (balance + investment principal) */}
+      <Paper
+        sx={{
+          p: 3,
+          mb: 3,
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, rgba(93, 156, 89, 0.08) 0%, rgba(63, 81, 181, 0.08) 100%)',
+        }}
+      >
+        <Typography variant="h6" gutterBottom>
+          総資産
+        </Typography>
+        <Box sx={{ textAlign: 'center', mb: 2 }}>
+          <Typography
+            variant={isMobile ? 'h4' : 'h3'}
+            sx={{ fontWeight: 700, color: currentBalance + totalInvestment >= 0 ? 'primary.dark' : 'error.main' }}
+          >
+            {investmentLoading ? '...' : formatCurrency(currentBalance + totalInvestment)}
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            残高{' '}
+            <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              {formatCurrency(currentBalance)}
+            </Box>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">＋</Typography>
+          <Typography variant="body2" color="text.secondary">
+            投資額（元金）{' '}
+            <Box component="span" sx={{ fontWeight: 700, color: '#3F51B5' }}>
+              {investmentLoading ? '...' : formatCurrency(totalInvestment)}
+            </Box>
+          </Typography>
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1.5 }}>
+          ※ 投資の評価損益は含みません
+        </Typography>
+      </Paper>
     </Container>
   )
 }

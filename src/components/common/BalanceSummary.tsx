@@ -70,7 +70,7 @@ export default function BalanceSummary({ summary, loading }: Props) {
         </Box>
         <Box>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-            現在の総資産
+            現在の残高
           </Typography>
           <Typography
             variant="h4"
